@@ -72,22 +72,14 @@ const PlayerMarker: React.FC<PlayerMarkerProps> = React.memo(
           </span>
         </div>
 
-        {/* 선수 이름 - 말줄임 처리 (골키퍼는 위쪽, 나머지는 아래쪽) */}
+        {/* 선수 이름 - 말줄임 처리 (모든 선수는 아래쪽에 배치) */}
         {player.name && (
           <div
             className="absolute left-1/2 pointer-events-none"
             style={{
               transform: "translateX(-50%)",
-              // 골키퍼는 위쪽, 나머지는 아래쪽에 배치
-              ...(isGK
-                ? {
-                    bottom: "100%",
-                    marginBottom: "4px",
-                  }
-                : {
-                    top: "100%",
-                    marginTop: "4px",
-                  }),
+              top: "100%",
+              marginTop: "4px",
               maxWidth: "clamp(60px, 15vw, 100px)", // 반응형 최대 너비
               width: "max-content",
             }}

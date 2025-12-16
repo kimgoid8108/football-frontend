@@ -97,14 +97,13 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
     return (
       <div
         ref={ref}
-        className="relative bg-green-700 rounded-lg shadow-2xl"
+        className="relative bg-green-700 rounded-lg shadow-2xl max-w-[393px] md:max-w-[600px]"
         style={{
           backgroundImage:
             "linear-gradient(0deg, #15803d 0%, #15803d 50%, #166534 50%, #166534 100%)",
           backgroundSize: "100% 20px",
           aspectRatio: "9 / 16", // 모바일 세로 방향
           width: "100%",
-          maxWidth: "min(100vw, 393px)", // iPhone 16 Pro 기준, 가로 스크롤 방지
           margin: "0 auto",
           boxSizing: "border-box",
           overflow: "visible", // 골키퍼가 잘리지 않도록

@@ -602,10 +602,8 @@ const SquadBuilder: React.FC = () => {
 
         {/* 필드와 선수 목록 - 모바일 퍼스트 레이아웃 */}
         <div
+          className="grid grid-cols-1 md:grid-cols-2 gap-6"
           style={{
-            display: "grid",
-            gridTemplateColumns: "1fr",
-            gap: "1.5rem",
             width: "100%",
           }}
         >
