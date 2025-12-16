@@ -476,7 +476,19 @@ const SquadBuilder: React.FC = () => {
 
   return (
     <div
-      className="min-h-screen bg-linear-to-br from-gray-900 via-blue-900 to-gray-900 p-4"
+      className="min-h-screen bg-linear-to-br from-gray-900 via-blue-900 to-gray-900"
+      style={{
+        padding:
+          "env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)",
+        paddingTop: "calc(1rem + env(safe-area-inset-top))",
+        paddingBottom: "calc(1rem + env(safe-area-inset-bottom))",
+        paddingLeft: "calc(1rem + env(safe-area-inset-left))",
+        paddingRight: "calc(1rem + env(safe-area-inset-right))",
+        overflowX: "hidden", // 가로 스크롤 방지
+        width: "100%",
+        maxWidth: "100vw",
+        boxSizing: "border-box",
+      }}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onTouchMove={handleTouchMove}
@@ -491,37 +503,77 @@ const SquadBuilder: React.FC = () => {
         </div>
       )}
 
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold text-white mb-6 text-center">
+      <div
+        className="mx-auto"
+        style={{
+          width: "100%",
+          maxWidth: "100vw",
+          display: "flex",
+          flexDirection: "column",
+          gap: "1.5rem",
+        }}
+      >
+        <h1
+          className="text-white font-bold text-center"
+          style={{
+            fontSize: "clamp(1.5rem, 5vw, 2rem)", // 반응형 폰트
+            marginBottom: "0.5rem",
+          }}
+        >
           {gameType === "football" ? "⚽" : "🥅"}{" "}
           {gameType === "football" ? "축구" : "풋살"} 스쿼드 빌더
         </h1>
 
         {/* 게임 타입 선택 버튼 */}
-        <div className="flex justify-center gap-4 mb-6">
+        <div
+          className="flex justify-center"
+          style={{
+            gap: "0.75rem",
+            marginBottom: "1rem",
+            flexWrap: "wrap",
+          }}
+        >
           <button
             onClick={() => handleGameTypeChange("football")}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+            className={`rounded-lg font-semibold transition-all ${
               gameType === "football"
-                ? "bg-blue-600 text-white shadow-lg scale-105"
+                ? "bg-blue-600 text-white shadow-lg"
                 : "bg-gray-700 text-gray-300 hover:bg-gray-600"
             }`}
+            style={{
+              padding: "0.75rem 1rem",
+              fontSize: "0.875rem",
+              minHeight: "44px", // 최소 터치 영역
+            }}
           >
             ⚽ 축구 스쿼드
           </button>
           <button
             onClick={() => handleGameTypeChange("futsal")}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+            className={`rounded-lg font-semibold transition-all ${
               gameType === "futsal"
-                ? "bg-blue-600 text-white shadow-lg scale-105"
+                ? "bg-blue-600 text-white shadow-lg"
                 : "bg-gray-700 text-gray-300 hover:bg-gray-600"
             }`}
+            style={{
+              padding: "0.75rem 1rem",
+              fontSize: "0.875rem",
+              minHeight: "44px", // 최소 터치 영역
+            }}
           >
             🥅 풋살 스쿼드
           </button>
         </div>
 
-        <div className="flex gap-4 mb-6 flex-wrap items-center">
+        {/* 컨트롤 영역 */}
+        <div
+          className="flex flex-wrap items-center"
+          style={{
+            gap: "0.75rem",
+            marginBottom: "1rem",
+            justifyContent: "center",
+          }}
+        >
           <Controls
             formation={formation}
             formations={availableFormations}
@@ -536,14 +588,29 @@ const SquadBuilder: React.FC = () => {
           />
           <button
             onClick={handleCaptureField}
-            className="bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded-lg font-semibold transition-all flex items-center gap-2"
+            className="bg-green-600 hover:bg-green-500 text-white rounded-lg font-semibold transition-all flex items-center"
+            style={{
+              padding: "0.75rem 1rem",
+              gap: "0.5rem",
+              fontSize: "0.875rem",
+              minHeight: "44px",
+            }}
           >
             📸 스쿼드 캡처
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+        {/* 필드와 선수 목록 - 모바일 퍼스트 레이아웃 */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr",
+            gap: "1.5rem",
+            width: "100%",
+          }}
+        >
+          {/* 필드 영역 */}
+          <div style={{ width: "100%", margin: "0 auto", maxWidth: "100%" }}>
             <Field
               ref={fieldRef}
               players={mainPlayers}
@@ -554,18 +621,25 @@ const SquadBuilder: React.FC = () => {
             />
           </div>
 
-          <PlayerList
-            players={players}
-            groupedPlayers={groupedPlayers}
-            collapsedSections={collapsedSections}
-            onToggleSection={toggleSection}
-            onNameChange={handleNameChange}
-            onPositionChange={handlePositionChange}
-            onDelete={deletePlayer}
-            onToggleBench={toggleBench}
-            onAddBenchPlayer={addBenchPlayer}
-            gameType={gameType}
-          />
+          {/* 선수 목록 - 모바일에서는 필드 아래, 데스크톱에서는 옆 */}
+          <div
+            style={{
+              width: "100%",
+            }}
+          >
+            <PlayerList
+              players={players}
+              groupedPlayers={groupedPlayers}
+              collapsedSections={collapsedSections}
+              onToggleSection={toggleSection}
+              onNameChange={handleNameChange}
+              onPositionChange={handlePositionChange}
+              onDelete={deletePlayer}
+              onToggleBench={toggleBench}
+              onAddBenchPlayer={addBenchPlayer}
+              gameType={gameType}
+            />
+          </div>
         </div>
       </div>
     </div>

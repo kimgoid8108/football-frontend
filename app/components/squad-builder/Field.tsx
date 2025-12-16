@@ -97,16 +97,25 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
     return (
       <div
         ref={ref}
-        className="relative bg-green-700 rounded-lg shadow-2xl overflow-visible"
+        className="relative bg-green-700 rounded-lg shadow-2xl"
         style={{
           backgroundImage:
             "linear-gradient(0deg, #15803d 0%, #15803d 50%, #166534 50%, #166534 100%)",
           backgroundSize: "100% 20px",
-          aspectRatio: "3/4",
+          aspectRatio: "9 / 16", // 모바일 세로 방향
+          width: "100%",
+          maxWidth: "min(100vw, 393px)", // iPhone 16 Pro 기준, 가로 스크롤 방지
+          margin: "0 auto",
+          boxSizing: "border-box",
+          overflow: "visible", // 골키퍼가 잘리지 않도록
+          position: "relative",
         }}
       >
-        {/* 필드 내부 컨테이너 (패딩 영역) */}
-        <div className="absolute inset-0 p-1 sm:p-2 md:p-3">
+        {/* 필드 내부 컨테이너 (패딩 영역 - 골키퍼 잘림 방지) */}
+        <div
+          className="absolute inset-0"
+          style={{ padding: "clamp(8px, 3%, 12px)" }}
+        >
           {/* 포지션 영역 오버레이 (드래그 중일 때만 표시) */}
           {isDragging && (
             <div
