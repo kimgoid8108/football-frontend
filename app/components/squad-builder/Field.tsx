@@ -1,4 +1,4 @@
-import React, { forwardRef } from "react";
+import React, { forwardRef, useMemo } from "react";
 import { Player, GameType } from "../../types/squad-builder";
 import PlayerMarker from "./PlayerMarker";
 
@@ -88,13 +88,16 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
     ref
   ) => {
     const isDragging = draggedPlayerId !== null;
-    const positionZones =
-      gameType === "futsal" ? FUTSAL_POSITION_ZONES : FOOTBALL_POSITION_ZONES;
+    const positionZones = useMemo(
+      () =>
+        gameType === "futsal" ? FUTSAL_POSITION_ZONES : FOOTBALL_POSITION_ZONES,
+      [gameType]
+    );
 
     return (
       <div
         ref={ref}
-        className="relative bg-green-700 rounded-lg overflow-hidden shadow-2xl"
+        className="relative bg-green-700 rounded-lg shadow-2xl overflow-visible"
         style={{
           backgroundImage:
             "linear-gradient(0deg, #15803d 0%, #15803d 50%, #166534 50%, #166534 100%)",
@@ -102,89 +105,101 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
           aspectRatio: "3/4",
         }}
       >
-        {/* 포지션 영역 오버레이 (드래그 중일 때만 표시) */}
-        {isDragging && (
-          <div className="absolute inset-0 pointer-events-none z-10">
-            {positionZones.map((zone, index) => (
-              <div
-                key={index}
-                className="absolute flex items-center justify-center transition-opacity duration-200"
-                style={{
-                  left: `${zone.x}%`,
-                  top: `${zone.y}%`,
-                  width: `${zone.width}%`,
-                  height: `${zone.height}%`,
-                  backgroundColor: `${zone.color}20`,
-                  border: `1px dashed ${zone.color}80`,
-                  borderRadius: "4px",
-                }}
-              >
-                <span
-                  className="text-xs font-bold px-1 py-0.5 rounded"
+        {/* 필드 내부 컨테이너 (패딩 영역) */}
+        <div className="absolute inset-0 p-1 sm:p-2 md:p-3">
+          {/* 포지션 영역 오버레이 (드래그 중일 때만 표시) */}
+          {isDragging && (
+            <div
+              className="absolute inset-0 pointer-events-none z-10"
+              style={{ willChange: "opacity" }}
+            >
+              {positionZones.map((zone, index) => (
+                <div
+                  key={index}
+                  className="absolute flex items-center justify-center"
                   style={{
-                    backgroundColor: `${zone.color}CC`,
-                    color: zone.color === "#FFD700" ? "#000" : "#fff",
-                    textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+                    left: `${zone.x}%`,
+                    top: `${zone.y}%`,
+                    width: `${zone.width}%`,
+                    height: `${zone.height}%`,
+                    backgroundColor: `${zone.color}20`,
+                    border: `1px dashed ${zone.color}80`,
+                    borderRadius: "4px",
                   }}
                 >
-                  {zone.label}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+                  <span
+                    className="text-xs font-bold px-1 py-0.5 rounded"
+                    style={{
+                      backgroundColor: `${zone.color}CC`,
+                      color: zone.color === "#FFD700" ? "#000" : "#fff",
+                      textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+                    }}
+                  >
+                    {zone.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
-        {/* 필드 라인 */}
-        <svg
-          className="absolute inset-0 w-full h-full pointer-events-none"
-          style={{ opacity: 0.3 }}
-        >
-          <rect
-            x="5%"
-            y="2%"
-            width="90%"
-            height="20%"
-            fill="none"
-            stroke="white"
-            strokeWidth="2"
-          />
-          <rect
-            x="5%"
-            y="78%"
-            width="90%"
-            height="20%"
-            fill="none"
-            stroke="white"
-            strokeWidth="2"
-          />
-          <line
-            x1="5%"
-            y1="50%"
-            x2="95%"
-            y2="50%"
-            stroke="white"
-            strokeWidth="2"
-          />
-          <circle
-            cx="50%"
-            cy="50%"
-            r="15%"
-            fill="none"
-            stroke="white"
-            strokeWidth="2"
-          />
-        </svg>
+          {/* 필드 라인 */}
+          <svg
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            style={{ opacity: 0.8 }}
+          >
+            {/* 골대 (상단) */}
+            <rect
+              x="5%"
+              y="2%"
+              width="90%"
+              height="18%"
+              fill="none"
+              stroke="white"
+              strokeWidth="3"
+            />
+            {/* 골대 (하단) */}
+            <rect
+              x="5%"
+              y="80%"
+              width="90%"
+              height="18%"
+              fill="none"
+              stroke="white"
+              strokeWidth="3"
+            />
+            {/* 중앙 라인 */}
+            <line
+              x1="5%"
+              y1="50%"
+              x2="95%"
+              y2="50%"
+              stroke="white"
+              strokeWidth="3.5"
+            />
+            {/* 중앙 서클 */}
+            <circle
+              cx="50%"
+              cy="50%"
+              r="15%"
+              fill="none"
+              stroke="white"
+              strokeWidth="3"
+            />
+            {/* 중앙 점 */}
+            <circle cx="50%" cy="50%" r="2%" fill="white" />
+          </svg>
 
-        {/* 선수 마커 */}
-        {players.map((player) => (
-          <PlayerMarker
-            key={player.id}
-            player={player}
-            isDragging={draggedPlayerId === player.id}
-            onMouseDown={onPlayerMouseDown}
-            onTouchStart={onPlayerTouchStart}
-          />
-        ))}
+          {/* 선수 마커 */}
+          {players.map((player) => (
+            <PlayerMarker
+              key={player.id}
+              player={player}
+              isDragging={draggedPlayerId === player.id}
+              onMouseDown={onPlayerMouseDown}
+              onTouchStart={onPlayerTouchStart}
+            />
+          ))}
+        </div>
       </div>
     );
   }

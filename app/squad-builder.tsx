@@ -41,6 +41,8 @@ const SquadBuilder: React.FC = () => {
     {}
   );
   const fieldRef = useRef<HTMLDivElement>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const lastUpdateTimeRef = useRef<number>(0);
 
   // 에러 메시지 표시
   const showError = useCallback((message: string): void => {
@@ -77,6 +79,15 @@ const SquadBuilder: React.FC = () => {
       setFormation(defaultFormation);
     }
   }, [gameType, availableFormations, formation]);
+
+  // 컴포넌트 언마운트 시 animationFrame 정리
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
 
   // 게임 타입 변경 핸들러
   const handleGameTypeChange = useCallback((newGameType: GameType): void => {
@@ -238,79 +249,115 @@ const SquadBuilder: React.FC = () => {
     []
   );
 
-  // 드래그 중 (마우스)
+  // 드래그 중 (마우스) - requestAnimationFrame으로 throttling
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>): void => {
       if (!draggedPlayer || !fieldRef.current) return;
 
-      const rect = fieldRef.current.getBoundingClientRect();
-      const x = ((e.clientX - dragOffset.x - rect.left) / rect.width) * 100;
-      const y = ((e.clientY - dragOffset.y - rect.top) / rect.height) * 100;
+      // 이전 프레임 취소
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
 
-      const clampedX = Math.max(5, Math.min(95, x));
-      const clampedY = Math.max(5, Math.min(95, y));
+      // requestAnimationFrame으로 throttling (60fps)
+      animationFrameRef.current = requestAnimationFrame(() => {
+        const now = Date.now();
+        // 모바일에서는 16ms마다 업데이트 (60fps)
+        if (now - lastUpdateTimeRef.current < 16) return;
+        lastUpdateTimeRef.current = now;
 
-      const newPosition = getPositionByLocation(
-        clampedX,
-        clampedY,
-        players,
-        draggedPlayer,
-        showError,
-        gameType
-      );
+        const rect = fieldRef.current!.getBoundingClientRect();
+        const x = ((e.clientX - dragOffset.x - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - dragOffset.y - rect.top) / rect.height) * 100;
 
-      setPlayers((prev: Player[]) =>
-        prev.map((p: Player) =>
-          p.id === draggedPlayer.id
-            ? { ...p, x: clampedX, y: clampedY, position: newPosition }
-            : p
-        )
-      );
+        const clampedX = Math.max(5, Math.min(95, x));
+        const clampedY = Math.max(5, Math.min(95, y));
+
+        const newPosition = getPositionByLocation(
+          clampedX,
+          clampedY,
+          players,
+          draggedPlayer,
+          showError,
+          gameType
+        );
+
+        setPlayers((prev: Player[]) =>
+          prev.map((p: Player) =>
+            p.id === draggedPlayer.id
+              ? { ...p, x: clampedX, y: clampedY, position: newPosition }
+              : p
+          )
+        );
+      });
     },
     [draggedPlayer, dragOffset, players, showError, gameType]
   );
 
-  // 드래그 중 (터치)
+  // 드래그 중 (터치) - requestAnimationFrame으로 throttling
   const handleTouchMove = useCallback(
     (e: React.TouchEvent<HTMLDivElement>): void => {
       if (!draggedPlayer || !fieldRef.current) return;
 
       e.preventDefault();
 
-      const rect = fieldRef.current.getBoundingClientRect();
-      const touch = e.touches[0];
-      const x = ((touch.clientX - dragOffset.x - rect.left) / rect.width) * 100;
-      const y = ((touch.clientY - dragOffset.y - rect.top) / rect.height) * 100;
+      // 이전 프레임 취소
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
 
-      const clampedX = Math.max(5, Math.min(95, x));
-      const clampedY = Math.max(5, Math.min(95, y));
+      // requestAnimationFrame으로 throttling (60fps)
+      animationFrameRef.current = requestAnimationFrame(() => {
+        const now = Date.now();
+        // 모바일에서는 16ms마다 업데이트 (60fps)
+        if (now - lastUpdateTimeRef.current < 16) return;
+        lastUpdateTimeRef.current = now;
 
-      const newPosition = getPositionByLocation(
-        clampedX,
-        clampedY,
-        players,
-        draggedPlayer,
-        showError,
-        gameType
-      );
+        const rect = fieldRef.current!.getBoundingClientRect();
+        const touch = e.touches[0];
+        const x =
+          ((touch.clientX - dragOffset.x - rect.left) / rect.width) * 100;
+        const y =
+          ((touch.clientY - dragOffset.y - rect.top) / rect.height) * 100;
 
-      setPlayers((prev: Player[]) =>
-        prev.map((p: Player) =>
-          p.id === draggedPlayer.id
-            ? { ...p, x: clampedX, y: clampedY, position: newPosition }
-            : p
-        )
-      );
+        const clampedX = Math.max(5, Math.min(95, x));
+        const clampedY = Math.max(5, Math.min(95, y));
+
+        const newPosition = getPositionByLocation(
+          clampedX,
+          clampedY,
+          players,
+          draggedPlayer,
+          showError,
+          gameType
+        );
+
+        setPlayers((prev: Player[]) =>
+          prev.map((p: Player) =>
+            p.id === draggedPlayer.id
+              ? { ...p, x: clampedX, y: clampedY, position: newPosition }
+              : p
+          )
+        );
+      });
     },
     [draggedPlayer, dragOffset, players, showError, gameType]
   );
 
   // 드래그 종료
   const handleMouseUp = useCallback((): void => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
     setDraggedPlayer(null);
   }, []);
 
   const handleTouchEnd = useCallback((): void => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
     setDraggedPlayer(null);
   }, []);
 
@@ -338,39 +385,76 @@ const SquadBuilder: React.FC = () => {
     try {
       showSuccess("이미지 생성 중...");
 
-      // html2canvas를 동적으로 import (클라이언트 사이드에서만 실행)
-      const html2canvasModule = await import("html2canvas");
-      const html2canvas = html2canvasModule.default;
+      // html2canvas-pro를 동적으로 import (클라이언트 사이드에서만 실행, LAB 컬러 지원)
+      const html2canvasModule = await import("html2canvas-pro" as any);
+      const html2canvas = html2canvasModule.default || html2canvasModule;
 
-      // 필드만 캡처 - 안전한 옵션 사용
+      // 필드만 캡처 - 안전한 옵션 사용 (LAB 컬러 파싱 오류 방지)
       const canvas = await html2canvas(fieldRef.current, {
         backgroundColor: "#15803d", // 필드 배경색
-        scale: 1.5, // 해상도 조정 (너무 높으면 오류 발생 가능)
+        scale: 1.5, // 해상도 조정
         logging: false,
         useCORS: true,
         allowTaint: false,
         removeContainer: true,
         foreignObjectRendering: false,
-        // CSS 파싱 오류 방지를 위한 옵션
-        ignoreElements: (element) => {
-          // SVG 요소는 무시 (필드 라인)
-          return element.tagName === "svg";
-        },
       });
 
-      // 이미지로 변환
-      const imageUrl = canvas.toDataURL("image/png");
+      // Canvas를 Blob으로 변환
+      canvas.toBlob(
+        (blob: Blob | null) => {
+          try {
+            if (!blob) {
+              showError("이미지 변환에 실패했습니다.");
+              return;
+            }
 
-      // 다운로드
-      const link = document.createElement("a");
-      const fileName = `${
-        gameType === "football" ? "축구" : "풋살"
-      }_스쿼드_${formation}_${new Date().getTime()}.png`;
-      link.download = fileName;
-      link.href = imageUrl;
-      link.click();
+            // Blob URL 생성
+            const url = URL.createObjectURL(blob);
 
-      showSuccess("이미지가 저장되었습니다!");
+            // 다운로드 링크 생성
+            const link = document.createElement("a");
+            const fileName = `${
+              gameType === "football" ? "football" : "futsal"
+            }_squad_${formation.replace(
+              /\s+/g,
+              "_"
+            )}_${new Date().getTime()}.png`;
+
+            link.download = fileName;
+            link.href = url;
+            link.style.display = "none";
+
+            // DOM에 추가하고 클릭 후 제거
+            document.body.appendChild(link);
+
+            // 약간의 지연을 주어 브라우저가 준비될 시간 제공
+            setTimeout(() => {
+              try {
+                link.click();
+                document.body.removeChild(link);
+
+                // Blob URL 해제
+                setTimeout(() => URL.revokeObjectURL(url), 200);
+
+                showSuccess("이미지가 저장되었습니다!");
+              } catch (downloadError) {
+                console.error("다운로드 실패:", downloadError);
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                showError(
+                  "이미지 다운로드에 실패했습니다. 브라우저 설정을 확인해주세요."
+                );
+              }
+            }, 10);
+          } catch (error) {
+            console.error("Blob 처리 오류:", error);
+            showError("이미지 저장 처리 중 오류가 발생했습니다.");
+          }
+        },
+        "image/png",
+        1.0 // 품질 (0.0 ~ 1.0)
+      );
     } catch (error) {
       console.error("캡처 실패:", error);
       showError("이미지 저장에 실패했습니다. 다시 시도해주세요.");
