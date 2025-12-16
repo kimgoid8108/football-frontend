@@ -52,3 +52,5 @@ export interface GroupedPlayers {
   [key: string]: Player[];
 }
 
+// 게임 타입
+export type GameType = "football" | "futsal";

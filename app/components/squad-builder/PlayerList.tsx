@@ -1,8 +1,13 @@
-import React from 'react';
-import { ChevronDown, ChevronUp, ArrowUp, ArrowDown } from 'lucide-react';
-import { Player, GroupedPlayers, CollapsedSections } from '../../types/squad-builder';
-import { POSITION_CATEGORIES } from '../../constants/squad-builder';
-import PlayerCard from './PlayerCard';
+import React from "react";
+import { ChevronDown, ChevronUp, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  Player,
+  GroupedPlayers,
+  CollapsedSections,
+  GameType,
+} from "../../types/squad-builder";
+import { POSITION_CATEGORIES } from "../../constants/squad-builder";
+import PlayerCard from "./PlayerCard";
 
 interface PlayerListProps {
   players: Player[];
@@ -14,6 +19,7 @@ interface PlayerListProps {
   onDelete: (id: number) => void;
   onToggleBench?: (id: number) => void;
   onAddBenchPlayer?: () => void;
+  gameType?: GameType;
 }
 
 const PlayerList: React.FC<PlayerListProps> = ({
@@ -26,10 +32,11 @@ const PlayerList: React.FC<PlayerListProps> = ({
   onDelete,
   onToggleBench,
   onAddBenchPlayer,
+  gameType = "football",
 }) => {
-  const mainPlayers = players.filter(p => !p.isBench);
-  const benchPlayers = players.filter(p => p.isBench);
-  const isBenchCollapsed = collapsedSections['BENCH'];
+  const mainPlayers = players.filter((p) => !p.isBench);
+  const benchPlayers = players.filter((p) => p.isBench);
+  const isBenchCollapsed = collapsedSections["BENCH"];
 
   return (
     <div className="space-y-3">
@@ -40,11 +47,14 @@ const PlayerList: React.FC<PlayerListProps> = ({
         {Object.keys(POSITION_CATEGORIES).map((category) => {
           const categoryPlayers = groupedPlayers[category];
           const isCollapsed = collapsedSections[category];
-          
+
           if (!categoryPlayers || categoryPlayers.length === 0) return null;
-          
+
           return (
-            <div key={category} className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
+            <div
+              key={category}
+              className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700"
+            >
               <button
                 onClick={() => onToggleSection(category)}
                 className="w-full px-4 py-3 flex items-center justify-between bg-gray-750 hover:bg-gray-700 transition"
@@ -63,7 +73,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                   <ChevronUp size={20} className="text-gray-400" />
                 )}
               </button>
-              
+
               {!isCollapsed && (
                 <div className="p-2 space-y-2">
                   {categoryPlayers.map((player) => (
@@ -73,6 +83,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                       onNameChange={onNameChange}
                       onPositionChange={onPositionChange}
                       onDelete={onDelete}
+                      gameType={gameType}
                       extraAction={
                         onToggleBench && (
                           <button
@@ -112,12 +123,14 @@ const PlayerList: React.FC<PlayerListProps> = ({
           {benchPlayers.length === 0 ? (
             <div className="bg-gray-800 rounded-lg p-4 border border-gray-700 border-dashed text-center">
               <p className="text-gray-400 text-sm">후보 선수가 없습니다</p>
-              <p className="text-gray-500 text-xs mt-1">위 버튼으로 추가하거나 주전을 후보로 내리세요</p>
+              <p className="text-gray-500 text-xs mt-1">
+                위 버튼으로 추가하거나 주전을 후보로 내리세요
+              </p>
             </div>
           ) : (
             <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
               <button
-                onClick={() => onToggleSection('BENCH')}
+                onClick={() => onToggleSection("BENCH")}
                 className="w-full px-4 py-3 flex items-center justify-between bg-orange-900/30 hover:bg-orange-900/50 transition"
               >
                 <div className="flex items-center gap-2">
@@ -132,7 +145,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                   <ChevronUp size={20} className="text-orange-400" />
                 )}
               </button>
-              
+
               {!isBenchCollapsed && (
                 <div className="p-2 space-y-2">
                   {benchPlayers.map((player) => (
@@ -142,6 +155,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                       onNameChange={onNameChange}
                       onPositionChange={onPositionChange}
                       onDelete={onDelete}
+                      gameType={gameType}
                       extraAction={
                         onToggleBench && (
                           <button
@@ -166,4 +180,3 @@ const PlayerList: React.FC<PlayerListProps> = ({
 };
 
 export default PlayerList;
-

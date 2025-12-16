@@ -1,8 +1,8 @@
-import React from 'react';
-import { Trash2 } from 'lucide-react';
-import { Player } from '../../types/squad-builder';
-import { getPositionColor } from '../../utils/squad-builder';
-import PositionSelect from './PositionSelect';
+import React from "react";
+import { Trash2 } from "lucide-react";
+import { Player, GameType } from "../../types/squad-builder";
+import { getPositionColor } from "../../utils/squad-builder";
+import PositionSelect from "./PositionSelect";
 
 interface PlayerCardProps {
   player: Player;
@@ -10,14 +10,16 @@ interface PlayerCardProps {
   onPositionChange: (id: number, position: string) => void;
   onDelete: (id: number) => void;
   extraAction?: React.ReactNode;
+  gameType?: GameType;
 }
 
-const PlayerCard: React.FC<PlayerCardProps> = ({ 
-  player, 
-  onNameChange, 
-  onPositionChange, 
+const PlayerCard: React.FC<PlayerCardProps> = ({
+  player,
+  onNameChange,
+  onPositionChange,
   onDelete,
   extraAction,
+  gameType = "football",
 }) => {
   const color = getPositionColor(player.position);
 
@@ -28,7 +30,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({
           className="w-10 h-10 rounded-full flex-shrink-0"
           style={{
             background: `radial-gradient(circle at 30% 30%, ${color}, ${color}dd)`,
-            border: '2px solid white',
+            border: "2px solid white",
           }}
         />
         <input
@@ -45,6 +47,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({
           value={player.position}
           onChange={(value) => onPositionChange(player.id, value)}
           className="flex-1"
+          gameType={gameType}
         />
         {extraAction}
         <button
@@ -59,4 +62,3 @@ const PlayerCard: React.FC<PlayerCardProps> = ({
 };
 
 export default PlayerCard;
-

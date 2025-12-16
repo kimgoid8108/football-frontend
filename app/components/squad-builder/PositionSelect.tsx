@@ -1,12 +1,36 @@
-import React from 'react';
+import React from "react";
+import { GameType } from "../../types/squad-builder";
 
 interface PositionSelectProps {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  gameType?: GameType;
 }
 
-const PositionSelect: React.FC<PositionSelectProps> = ({ value, onChange, className = '' }) => {
+const PositionSelect: React.FC<PositionSelectProps> = ({
+  value,
+  onChange,
+  className = "",
+  gameType = "football",
+}) => {
+  // 풋살의 경우 간단한 포지션만 표시
+  if (gameType === "futsal") {
+    return (
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`bg-gray-600 text-white px-3 py-2 rounded border border-gray-500 focus:border-blue-500 focus:outline-none text-sm ${className}`}
+      >
+        <option value="GK">GK (골키퍼)</option>
+        <option value="DF">DF (수비수)</option>
+        <option value="MF">MF (미드필더)</option>
+        <option value="FW">FW (공격수)</option>
+      </select>
+    );
+  }
+
+  // 축구의 경우 모든 포지션 표시
   return (
     <select
       value={value}
@@ -55,4 +79,3 @@ const PositionSelect: React.FC<PositionSelectProps> = ({ value, onChange, classN
 };
 
 export default PositionSelect;
-

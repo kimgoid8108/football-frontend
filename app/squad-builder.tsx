@@ -1,20 +1,45 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
-import { Player, Coordinates, CollapsedSections, GroupedPlayers } from "./types/squad-builder";
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+  useEffect,
+} from "react";
+import {
+  Player,
+  Coordinates,
+  CollapsedSections,
+  GroupedPlayers,
+  GameType,
+} from "./types/squad-builder";
 import { FORMATIONS, POSITION_CATEGORIES } from "./constants/squad-builder";
-import { getPositionByLocation, getDefaultPositionCoordinates, getRandomName } from "./utils/squad-builder";
-import { ErrorToast, Controls, Field, PlayerList, SaveLoadPanel } from "./components/squad-builder";
+import {
+  getPositionByLocation,
+  getDefaultPositionCoordinates,
+  getRandomName,
+} from "./utils/squad-builder";
+import {
+  ErrorToast,
+  Controls,
+  Field,
+  PlayerList,
+  SaveLoadPanel,
+} from "./components/squad-builder";
 import { SquadData } from "./utils/api";
 
 const SquadBuilder: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [draggedPlayer, setDraggedPlayer] = useState<Player | null>(null);
   const [dragOffset, setDragOffset] = useState<Coordinates>({ x: 0, y: 0 });
+  const [gameType, setGameType] = useState<GameType>("football");
   const [formation, setFormation] = useState<string>("4-3-3");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [successMessage, setSuccessMessage] = useState<string>("");
-  const [collapsedSections, setCollapsedSections] = useState<CollapsedSections>({});
+  const [collapsedSections, setCollapsedSections] = useState<CollapsedSections>(
+    {}
+  );
   const fieldRef = useRef<HTMLDivElement>(null);
 
   // 에러 메시지 표시
@@ -29,6 +54,42 @@ const SquadBuilder: React.FC = () => {
     setTimeout(() => setSuccessMessage(""), 3000);
   }, []);
 
+  // 게임 타입별 최대 주전 선수 수
+  const maxMainPlayers = useMemo(() => {
+    return gameType === "football" ? 11 : 7;
+  }, [gameType]);
+
+  // 게임 타입별 사용 가능한 포메이션
+  const availableFormations = useMemo(() => {
+    if (gameType === "football") {
+      // 축구 포메이션만 (풋살 포메이션 제외)
+      return Object.keys(FORMATIONS).filter((key) => !key.includes("인"));
+    } else {
+      // 풋살 포메이션만
+      return Object.keys(FORMATIONS).filter((key) => key.includes("인"));
+    }
+  }, [gameType]);
+
+  // 현재 포메이션이 사용 가능한 포메이션 목록에 없으면 기본 포메이션으로 설정
+  useEffect(() => {
+    if (!availableFormations.includes(formation)) {
+      const defaultFormation = gameType === "football" ? "4-3-3" : "5인 1-2-1";
+      setFormation(defaultFormation);
+    }
+  }, [gameType, availableFormations, formation]);
+
+  // 게임 타입 변경 핸들러
+  const handleGameTypeChange = useCallback((newGameType: GameType): void => {
+    setGameType(newGameType);
+    setPlayers([]); // 게임 타입 변경 시 선수 초기화
+    // 기본 포메이션 설정
+    if (newGameType === "football") {
+      setFormation("4-3-3");
+    } else {
+      setFormation("5인 1-2-1");
+    }
+  }, []);
+
   // 포메이션 로드
   const loadFormation = useCallback(
     (formationKey: string): void => {
@@ -37,7 +98,9 @@ const SquadBuilder: React.FC = () => {
       const usedNames: string[] = [];
 
       const newPlayers: Player[] = template.map((t, i) => {
-        const name = getRandomName([...players.filter((p: Player) => usedNames.includes(p.name))]);
+        const name = getRandomName([
+          ...players.filter((p: Player) => usedNames.includes(p.name)),
+        ]);
         usedNames.push(name);
         return {
           id: Date.now() + i,
@@ -54,14 +117,18 @@ const SquadBuilder: React.FC = () => {
 
   // 선수 이름 변경
   const handleNameChange = useCallback((id: number, name: string): void => {
-    setPlayers((prev: Player[]) => prev.map((p: Player) => (p.id === id ? { ...p, name } : p)));
+    setPlayers((prev: Player[]) =>
+      prev.map((p: Player) => (p.id === id ? { ...p, name } : p))
+    );
   }, []);
 
   // 선수 포지션 변경
   const handlePositionChange = useCallback(
     (id: number, position: string): void => {
       if (position === "GK") {
-        const hasGK = players.some((p: Player) => p.position === "GK" && p.id !== id);
+        const hasGK = players.some(
+          (p: Player) => p.position === "GK" && p.id !== id
+        );
         if (hasGK) {
           showError("골키퍼는 한 명만 가능합니다!");
           return;
@@ -69,7 +136,11 @@ const SquadBuilder: React.FC = () => {
       }
 
       const coords = getDefaultPositionCoordinates(position);
-      setPlayers((prev: Player[]) => prev.map((p: Player) => (p.id === id ? { ...p, position, x: coords.x, y: coords.y } : p)));
+      setPlayers((prev: Player[]) =>
+        prev.map((p: Player) =>
+          p.id === id ? { ...p, position, x: coords.x, y: coords.y } : p
+        )
+      );
     },
     [players, showError]
   );
@@ -98,11 +169,11 @@ const SquadBuilder: React.FC = () => {
       const player = players.find((p: Player) => p.id === id);
       if (!player) return;
 
-      // 후보 -> 주전: 11명 제한 확인
+      // 후보 -> 주전: 최대 인원 제한 확인
       if (player.isBench) {
         const mainCount = players.filter((p: Player) => !p.isBench).length;
-        if (mainCount >= 11) {
-          showError("주전은 11명까지만 가능합니다!");
+        if (mainCount >= maxMainPlayers) {
+          showError(`주전은 ${maxMainPlayers}명까지만 가능합니다!`);
           return;
         }
       }
@@ -123,27 +194,51 @@ const SquadBuilder: React.FC = () => {
         })
       );
     },
-    [players, showError]
+    [players, maxMainPlayers, showError]
   );
 
-  // 드래그 시작
-  const handleBallMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>, player: Player): void => {
-    if (player.position === "GK") return;
+  // 드래그 시작 (마우스)
+  const handleBallMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>, player: Player): void => {
+      if (player.position === "GK") return;
 
-    e.preventDefault();
-    e.stopPropagation();
+      e.preventDefault();
+      e.stopPropagation();
 
-    const ball = e.currentTarget;
-    const rect = ball.getBoundingClientRect();
+      const ball = e.currentTarget;
+      const rect = ball.getBoundingClientRect();
 
-    setDragOffset({
-      x: e.clientX - rect.left - rect.width / 2,
-      y: e.clientY - rect.top - rect.height / 2,
-    });
-    setDraggedPlayer(player);
-  }, []);
+      setDragOffset({
+        x: e.clientX - rect.left - rect.width / 2,
+        y: e.clientY - rect.top - rect.height / 2,
+      });
+      setDraggedPlayer(player);
+    },
+    []
+  );
 
-  // 드래그 중
+  // 드래그 시작 (터치)
+  const handleBallTouchStart = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>, player: Player): void => {
+      if (player.position === "GK") return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const ball = e.currentTarget;
+      const rect = ball.getBoundingClientRect();
+      const touch = e.touches[0];
+
+      setDragOffset({
+        x: touch.clientX - rect.left - rect.width / 2,
+        y: touch.clientY - rect.top - rect.height / 2,
+      });
+      setDraggedPlayer(player);
+    },
+    []
+  );
+
+  // 드래그 중 (마우스)
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>): void => {
       if (!draggedPlayer || !fieldRef.current) return;
@@ -155,15 +250,67 @@ const SquadBuilder: React.FC = () => {
       const clampedX = Math.max(5, Math.min(95, x));
       const clampedY = Math.max(5, Math.min(95, y));
 
-      const newPosition = getPositionByLocation(clampedX, clampedY, players, draggedPlayer, showError);
+      const newPosition = getPositionByLocation(
+        clampedX,
+        clampedY,
+        players,
+        draggedPlayer,
+        showError,
+        gameType
+      );
 
-      setPlayers((prev: Player[]) => prev.map((p: Player) => (p.id === draggedPlayer.id ? { ...p, x: clampedX, y: clampedY, position: newPosition } : p)));
+      setPlayers((prev: Player[]) =>
+        prev.map((p: Player) =>
+          p.id === draggedPlayer.id
+            ? { ...p, x: clampedX, y: clampedY, position: newPosition }
+            : p
+        )
+      );
     },
-    [draggedPlayer, dragOffset, players, showError]
+    [draggedPlayer, dragOffset, players, showError, gameType]
+  );
+
+  // 드래그 중 (터치)
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>): void => {
+      if (!draggedPlayer || !fieldRef.current) return;
+
+      e.preventDefault();
+
+      const rect = fieldRef.current.getBoundingClientRect();
+      const touch = e.touches[0];
+      const x = ((touch.clientX - dragOffset.x - rect.left) / rect.width) * 100;
+      const y = ((touch.clientY - dragOffset.y - rect.top) / rect.height) * 100;
+
+      const clampedX = Math.max(5, Math.min(95, x));
+      const clampedY = Math.max(5, Math.min(95, y));
+
+      const newPosition = getPositionByLocation(
+        clampedX,
+        clampedY,
+        players,
+        draggedPlayer,
+        showError,
+        gameType
+      );
+
+      setPlayers((prev: Player[]) =>
+        prev.map((p: Player) =>
+          p.id === draggedPlayer.id
+            ? { ...p, x: clampedX, y: clampedY, position: newPosition }
+            : p
+        )
+      );
+    },
+    [draggedPlayer, dragOffset, players, showError, gameType]
   );
 
   // 드래그 종료
   const handleMouseUp = useCallback((): void => {
+    setDraggedPlayer(null);
+  }, []);
+
+  const handleTouchEnd = useCallback((): void => {
     setDraggedPlayer(null);
   }, []);
 
@@ -181,33 +328,146 @@ const SquadBuilder: React.FC = () => {
     setPlayers(squad.players);
   }, []);
 
+  // 필드 캡처 및 다운로드
+  const handleCaptureField = useCallback(async (): Promise<void> => {
+    if (!fieldRef.current) {
+      showError("필드를 찾을 수 없습니다.");
+      return;
+    }
+
+    try {
+      showSuccess("이미지 생성 중...");
+
+      // html2canvas를 동적으로 import (클라이언트 사이드에서만 실행)
+      const html2canvasModule = await import("html2canvas");
+      const html2canvas = html2canvasModule.default;
+
+      // 필드만 캡처 - 안전한 옵션 사용
+      const canvas = await html2canvas(fieldRef.current, {
+        backgroundColor: "#15803d", // 필드 배경색
+        scale: 1.5, // 해상도 조정 (너무 높으면 오류 발생 가능)
+        logging: false,
+        useCORS: true,
+        allowTaint: false,
+        removeContainer: true,
+        foreignObjectRendering: false,
+        // CSS 파싱 오류 방지를 위한 옵션
+        ignoreElements: (element) => {
+          // SVG 요소는 무시 (필드 라인)
+          return element.tagName === "svg";
+        },
+      });
+
+      // 이미지로 변환
+      const imageUrl = canvas.toDataURL("image/png");
+
+      // 다운로드
+      const link = document.createElement("a");
+      const fileName = `${
+        gameType === "football" ? "축구" : "풋살"
+      }_스쿼드_${formation}_${new Date().getTime()}.png`;
+      link.download = fileName;
+      link.href = imageUrl;
+      link.click();
+
+      showSuccess("이미지가 저장되었습니다!");
+    } catch (error) {
+      console.error("캡처 실패:", error);
+      showError("이미지 저장에 실패했습니다. 다시 시도해주세요.");
+    }
+  }, [gameType, formation, showError, showSuccess]);
+
   // 주전 선수만 필터링
   const mainPlayers = players.filter((p: Player) => !p.isBench);
 
   // 포지션별 선수 그룹화 (주전만)
-  const groupedPlayers: GroupedPlayers = Object.keys(POSITION_CATEGORIES).reduce((acc, category) => {
-    acc[category] = mainPlayers.filter((p: Player) => POSITION_CATEGORIES[category].positions.includes(p.position));
+  const groupedPlayers: GroupedPlayers = Object.keys(
+    POSITION_CATEGORIES
+  ).reduce((acc, category) => {
+    acc[category] = mainPlayers.filter((p: Player) =>
+      POSITION_CATEGORIES[category].positions.includes(p.position)
+    );
     return acc;
   }, {} as GroupedPlayers);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-gray-900 via-blue-900 to-gray-900 p-4" onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}>
+    <div
+      className="min-h-screen bg-linear-to-br from-gray-900 via-blue-900 to-gray-900 p-4"
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       <ErrorToast message={errorMessage} />
 
       {/* 성공 메시지 토스트 */}
-      {successMessage && <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse">✅ {successMessage}</div>}
+      {successMessage && (
+        <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse">
+          ✅ {successMessage}
+        </div>
+      )}
 
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold text-white mb-6 text-center">⚽ FIFA 스쿼드 빌더</h1>
+        <h1 className="text-4xl font-bold text-white mb-6 text-center">
+          {gameType === "football" ? "⚽" : "🥅"}{" "}
+          {gameType === "football" ? "축구" : "풋살"} 스쿼드 빌더
+        </h1>
+
+        {/* 게임 타입 선택 버튼 */}
+        <div className="flex justify-center gap-4 mb-6">
+          <button
+            onClick={() => handleGameTypeChange("football")}
+            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+              gameType === "football"
+                ? "bg-blue-600 text-white shadow-lg scale-105"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+            }`}
+          >
+            ⚽ 축구 스쿼드
+          </button>
+          <button
+            onClick={() => handleGameTypeChange("futsal")}
+            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+              gameType === "futsal"
+                ? "bg-blue-600 text-white shadow-lg scale-105"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+            }`}
+          >
+            🥅 풋살 스쿼드
+          </button>
+        </div>
 
         <div className="flex gap-4 mb-6 flex-wrap items-center">
-          <Controls formation={formation} onFormationChange={loadFormation} />
-          <SaveLoadPanel currentFormation={formation} currentPlayers={players} onLoad={handleLoadSquad} onSuccess={showSuccess} onError={showError} />
+          <Controls
+            formation={formation}
+            formations={availableFormations}
+            onFormationChange={loadFormation}
+          />
+          <SaveLoadPanel
+            currentFormation={formation}
+            currentPlayers={players}
+            onLoad={handleLoadSquad}
+            onSuccess={showSuccess}
+            onError={showError}
+          />
+          <button
+            onClick={handleCaptureField}
+            className="bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded-lg font-semibold transition-all flex items-center gap-2"
+          >
+            📸 스쿼드 캡처
+          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <Field ref={fieldRef} players={mainPlayers} draggedPlayerId={draggedPlayer?.id ?? null} onPlayerMouseDown={handleBallMouseDown} />
+            <Field
+              ref={fieldRef}
+              players={mainPlayers}
+              draggedPlayerId={draggedPlayer?.id ?? null}
+              onPlayerMouseDown={handleBallMouseDown}
+              onPlayerTouchStart={handleBallTouchStart}
+              gameType={gameType}
+            />
           </div>
 
           <PlayerList
@@ -220,6 +480,7 @@ const SquadBuilder: React.FC = () => {
             onDelete={deletePlayer}
             onToggleBench={toggleBench}
             onAddBenchPlayer={addBenchPlayer}
+            gameType={gameType}
           />
         </div>
       </div>
