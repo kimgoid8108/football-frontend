@@ -40,6 +40,7 @@ const SquadBuilder: React.FC = () => {
   const [collapsedSections, setCollapsedSections] = useState<CollapsedSections>(
     {}
   );
+  const [currentSquadId, setCurrentSquadId] = useState<number | null>(null);
   const fieldRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastUpdateTimeRef = useRef<number>(0);
@@ -98,6 +99,7 @@ const SquadBuilder: React.FC = () => {
   const handleGameTypeChange = useCallback((newGameType: GameType): void => {
     setGameType(newGameType);
     setPlayers([]); // 게임 타입 변경 시 선수 초기화
+    setCurrentSquadId(null); // 게임 타입 변경 시 현재 스쿼드 ID 초기화
     // 기본 포메이션 설정
     if (newGameType === "football") {
       setFormation("4-3-3");
@@ -110,6 +112,7 @@ const SquadBuilder: React.FC = () => {
   const loadFormation = useCallback(
     (formationKey: string): void => {
       setFormation(formationKey);
+      setCurrentSquadId(null); // 포메이션 변경 시 현재 스쿼드 ID 초기화
       const template = FORMATIONS[formationKey];
       const usedNames: string[] = [];
 
@@ -377,6 +380,17 @@ const SquadBuilder: React.FC = () => {
   // 스쿼드 불러오기
   const handleLoadSquad = useCallback(
     (squad: SquadData): void => {
+      console.log("불러온 스쿼드 데이터:", squad);
+      console.log("불러온 선수 데이터:", squad.players);
+      console.log(
+        "선수 이름 확인:",
+        squad.players?.map((p) => ({
+          id: p.id,
+          name: p.name,
+          position: p.position,
+        }))
+      );
+
       // 저장된 게임 타입이 있으면 해당 게임 타입으로 전환
       // 없으면 선수 수로 판단 (풋살은 최대 7명)
       let targetGameType: GameType = squad.gameType || "football";
@@ -387,6 +401,9 @@ const SquadBuilder: React.FC = () => {
 
       // 스쿼드 로딩 중 플래그 설정
       isLoadingSquadRef.current = true;
+
+      // 현재 로드된 스쿼드 ID 저장
+      setCurrentSquadId(squad.id || null);
 
       // gameType을 먼저 변경하고, 그 다음 formation과 players를 설정
       if (targetGameType !== gameType) {
@@ -611,6 +628,7 @@ const SquadBuilder: React.FC = () => {
             currentFormation={formation}
             currentPlayers={players}
             currentGameType={gameType}
+            currentSquadId={currentSquadId}
             onLoad={handleLoadSquad}
             onSuccess={showSuccess}
             onError={showError}

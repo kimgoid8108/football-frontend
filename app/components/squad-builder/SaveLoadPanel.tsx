@@ -4,6 +4,7 @@ import {
   SquadData,
   getAllSquads,
   createSquad,
+  updateSquad,
   deleteSquad,
 } from "../../utils/api";
 
@@ -11,6 +12,7 @@ interface SaveLoadPanelProps {
   currentFormation: string;
   currentPlayers: SquadData["players"];
   currentGameType?: "football" | "futsal";
+  currentSquadId?: number | null;
   onLoad: (squad: SquadData) => void;
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
@@ -20,6 +22,7 @@ const SaveLoadPanel: React.FC<SaveLoadPanelProps> = ({
   currentFormation,
   currentPlayers,
   currentGameType = "football",
+  currentSquadId,
   onLoad,
   onSuccess,
   onError,
@@ -63,17 +66,59 @@ const SaveLoadPanel: React.FC<SaveLoadPanelProps> = ({
 
     try {
       setIsLoading(true);
-      await createSquad({
+      const squadData = {
         name: squadName.trim(),
         formation: currentFormation,
         players: currentPlayers,
         gameType: currentGameType,
-      });
+      };
+      console.log("저장할 스쿼드 데이터:", squadData);
+      console.log(
+        "선수 데이터 확인:",
+        currentPlayers.map((p) => ({
+          id: p.id,
+          name: p.name,
+          position: p.position,
+        }))
+      );
+      await createSquad(squadData);
       onSuccess(`"${squadName}" 스쿼드가 저장되었습니다!`);
       setSquadName("");
       loadSquads();
-    } catch {
+    } catch (error) {
+      console.error("스쿼드 저장 에러:", error);
       onError("스쿼드 저장에 실패했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 스쿼드 업데이트
+  const handleUpdate = async () => {
+    if (!currentSquadId) {
+      onError("업데이트할 스쿼드가 없습니다.");
+      return;
+    }
+
+    if (currentPlayers.length === 0) {
+      onError("저장할 선수가 없습니다.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const squadData = {
+        formation: currentFormation,
+        players: currentPlayers,
+        gameType: currentGameType,
+      };
+      console.log("업데이트할 스쿼드 데이터:", squadData);
+      await updateSquad(currentSquadId, squadData);
+      onSuccess("스쿼드가 업데이트되었습니다!");
+      loadSquads();
+    } catch (error) {
+      console.error("스쿼드 업데이트 에러:", error);
+      onError("스쿼드 업데이트에 실패했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -183,15 +228,42 @@ const SaveLoadPanel: React.FC<SaveLoadPanelProps> = ({
                         {currentPlayers.length}명
                       </span>
                     </p>
+                    {currentSquadId && (
+                      <p className="text-purple-400 text-xs mt-2">
+                        ✨ 현재 로드된 스쿼드가 있습니다. 업데이트할 수
+                        있습니다.
+                      </p>
+                    )}
                   </div>
-                  <button
-                    onClick={handleSave}
-                    disabled={isLoading}
-                    className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 text-white py-3 rounded-lg font-medium transition flex items-center justify-center gap-2"
-                  >
-                    <Save size={20} />
-                    {isLoading ? "저장 중..." : "스쿼드 저장"}
-                  </button>
+                  {currentSquadId ? (
+                    <div className="space-y-2">
+                      <button
+                        onClick={handleUpdate}
+                        disabled={isLoading}
+                        className="w-full bg-green-600 hover:bg-green-500 disabled:bg-gray-600 text-white py-3 rounded-lg font-medium transition flex items-center justify-center gap-2"
+                      >
+                        <Save size={20} />
+                        {isLoading ? "업데이트 중..." : "현재 스쿼드 업데이트"}
+                      </button>
+                      <button
+                        onClick={handleSave}
+                        disabled={isLoading}
+                        className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 text-white py-3 rounded-lg font-medium transition flex items-center justify-center gap-2"
+                      >
+                        <Save size={20} />
+                        {isLoading ? "저장 중..." : "새 스쿼드로 저장"}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleSave}
+                      disabled={isLoading}
+                      className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 text-white py-3 rounded-lg font-medium transition flex items-center justify-center gap-2"
+                    >
+                      <Save size={20} />
+                      {isLoading ? "저장 중..." : "스쿼드 저장"}
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3 max-h-80 overflow-y-auto">
