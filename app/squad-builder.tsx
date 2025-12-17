@@ -43,6 +43,7 @@ const SquadBuilder: React.FC = () => {
   const fieldRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastUpdateTimeRef = useRef<number>(0);
+  const isLoadingSquadRef = useRef<boolean>(false);
 
   // 에러 메시지 표시
   const showError = useCallback((message: string): void => {
@@ -73,8 +74,12 @@ const SquadBuilder: React.FC = () => {
   }, [gameType]);
 
   // 현재 포메이션이 사용 가능한 포메이션 목록에 없으면 기본 포메이션으로 설정
+  // 단, 스쿼드를 불러오는 중이면 건너뛰기
   useEffect(() => {
-    if (!availableFormations.includes(formation)) {
+    if (
+      !isLoadingSquadRef.current &&
+      !availableFormations.includes(formation)
+    ) {
       const defaultFormation = gameType === "football" ? "4-3-3" : "5인 1-2-1";
       setFormation(defaultFormation);
     }
@@ -370,10 +375,33 @@ const SquadBuilder: React.FC = () => {
   }, []);
 
   // 스쿼드 불러오기
-  const handleLoadSquad = useCallback((squad: SquadData): void => {
-    setFormation(squad.formation);
-    setPlayers(squad.players);
-  }, []);
+  const handleLoadSquad = useCallback(
+    (squad: SquadData): void => {
+      // 저장된 게임 타입이 있으면 해당 게임 타입으로 전환
+      // 없으면 선수 수로 판단 (풋살은 최대 7명)
+      let targetGameType: GameType = squad.gameType || "football";
+      if (!squad.gameType) {
+        const mainPlayersCount = squad.players.filter((p) => !p.isBench).length;
+        targetGameType = mainPlayersCount <= 7 ? "futsal" : "football";
+      }
+
+      // 스쿼드 로딩 중 플래그 설정
+      isLoadingSquadRef.current = true;
+
+      // gameType을 먼저 변경하고, 그 다음 formation과 players를 설정
+      if (targetGameType !== gameType) {
+        setGameType(targetGameType);
+      }
+      setFormation(squad.formation);
+      setPlayers(squad.players);
+
+      // 다음 렌더링 사이클에서 플래그 해제
+      setTimeout(() => {
+        isLoadingSquadRef.current = false;
+      }, 0);
+    },
+    [gameType]
+  );
 
   // 필드 캡처 및 다운로드
   const handleCaptureField = useCallback(async (): Promise<void> => {
@@ -582,6 +610,7 @@ const SquadBuilder: React.FC = () => {
           <SaveLoadPanel
             currentFormation={formation}
             currentPlayers={players}
+            currentGameType={gameType}
             onLoad={handleLoadSquad}
             onSuccess={showSuccess}
             onError={showError}

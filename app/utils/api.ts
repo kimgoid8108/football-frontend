@@ -14,6 +14,7 @@ export interface SquadData {
   name: string;
   formation: string;
   players: Player[];
+  gameType?: "football" | "futsal";
   createdAt?: string;
   updatedAt?: string;
 }

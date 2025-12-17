@@ -103,12 +103,13 @@ const PlayerMarker: React.FC<PlayerMarkerProps> = React.memo(
     );
   },
   (prevProps, nextProps) => {
-    // 커스텀 비교 함수: player의 id, x, y, position, isDragging만 비교
+    // 커스텀 비교 함수: player의 id, x, y, position, name, isDragging 비교
     return (
       prevProps.player.id === nextProps.player.id &&
       prevProps.player.x === nextProps.player.x &&
       prevProps.player.y === nextProps.player.y &&
       prevProps.player.position === nextProps.player.position &&
+      prevProps.player.name === nextProps.player.name &&
       prevProps.isDragging === nextProps.isDragging
     );
   }
