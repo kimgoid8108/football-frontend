@@ -602,7 +602,7 @@ const SquadBuilder: React.FC = () => {
 
         {/* 필드와 선수 목록 - 모바일 퍼스트 레이아웃 */}
         <div
-          className="grid grid-cols-1 md:grid-cols-2 gap-6"
+          className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-6"
           style={{
             width: "100%",
           }}
@@ -621,6 +621,7 @@ const SquadBuilder: React.FC = () => {
 
           {/* 선수 목록 - 모바일에서는 필드 아래, 데스크톱에서는 옆 */}
           <div
+            className="md:max-w-[400px]"
             style={{
               width: "100%",
             }}
