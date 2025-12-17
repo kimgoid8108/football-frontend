@@ -9,6 +9,102 @@ const API_BASE_URL =
 
 console.log("API URL:", API_BASE_URL);
 
+// 인증 관련 인터페이스
+export interface AuthResponse {
+  accessToken: string;
+  user: {
+    id: number;
+    email: string;
+    name: string;
+  };
+}
+
+export interface LoginDto {
+  email: string;
+  password: string;
+}
+
+export interface RegisterDto {
+  email: string;
+  password: string;
+  name: string;
+}
+
+// 토큰 가져오기
+export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+}
+
+// 토큰 저장
+export function setToken(token: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("token", token);
+}
+
+// 토큰 제거
+export function removeToken(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("token");
+}
+
+// 인증된 요청 헤더
+export function getAuthHeaders(): HeadersInit {
+  const token = getToken();
+  return {
+    "Content-Type": "application/json",
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
+}
+
+// 회원가입
+export async function register(data: RegisterDto): Promise<AuthResponse> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("API Error:", response.status, errorText);
+      throw new Error(`회원가입에 실패했습니다. (${response.status})`);
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("register error:", error);
+    throw error;
+  }
+}
+
+// 로그인
+export async function login(data: LoginDto): Promise<AuthResponse> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("API Error:", response.status, errorText);
+      throw new Error(`로그인에 실패했습니다. (${response.status})`);
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("login error:", error);
+    throw error;
+  }
+}
+
 export interface SquadData {
   id?: number;
   name: string;
@@ -23,9 +119,7 @@ export interface SquadData {
 export async function getAllSquads(): Promise<SquadData[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/squads`, {
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -45,9 +139,7 @@ export async function getAllSquads(): Promise<SquadData[]> {
 export async function getSquad(id: number): Promise<SquadData> {
   try {
     const response = await fetch(`${API_BASE_URL}/squads/${id}`, {
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -68,9 +160,7 @@ export async function createSquad(
   try {
     const response = await fetch(`${API_BASE_URL}/squads`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
 
@@ -95,9 +185,7 @@ export async function updateSquad(
   try {
     const response = await fetch(`${API_BASE_URL}/squads/${id}`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
 
@@ -119,9 +207,7 @@ export async function deleteSquad(id: number): Promise<void> {
   try {
     const response = await fetch(`${API_BASE_URL}/squads/${id}`, {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(),
     });
 
     if (!response.ok) {

@@ -28,8 +28,13 @@ import {
   SaveLoadPanel,
 } from "./components/squad-builder";
 import { SquadData } from "./utils/api";
+import { useAuth } from "./contexts/AuthContext";
+import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 
 const SquadBuilder: React.FC = () => {
+  const { user, logout } = useAuth();
+  const router = useRouter();
   const [players, setPlayers] = useState<Player[]>([]);
   const [draggedPlayer, setDraggedPlayer] = useState<Player | null>(null);
   const [dragOffset, setDragOffset] = useState<Coordinates>({ x: 0, y: 0 });
@@ -45,6 +50,11 @@ const SquadBuilder: React.FC = () => {
   const animationFrameRef = useRef<number | null>(null);
   const lastUpdateTimeRef = useRef<number>(0);
   const isLoadingSquadRef = useRef<boolean>(false);
+
+  const handleLogout = () => {
+    logout();
+    router.push("/login");
+  };
 
   // 에러 메시지 표시
   const showError = useCallback((message: string): void => {
@@ -547,6 +557,22 @@ const SquadBuilder: React.FC = () => {
           ✅ {successMessage}
         </div>
       )}
+
+      {/* 사용자 정보 및 로그아웃 버튼 */}
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
+        {user && (
+          <div className="bg-gray-800/90 backdrop-blur-sm text-white px-4 py-2 rounded-lg border border-gray-700 text-sm">
+            👤 {user.name}
+          </div>
+        )}
+        <button
+          onClick={handleLogout}
+          className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition font-medium text-sm"
+        >
+          <LogOut size={18} />
+          로그아웃
+        </button>
+      </div>
 
       <div
         className="mx-auto"
