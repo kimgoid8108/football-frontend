@@ -108,18 +108,26 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 space-y-2 text-center">
           <button
             onClick={() => {
               setIsLogin(!isLogin);
               setError("");
             }}
-            className="text-purple-400 hover:text-purple-300 text-sm"
+            className="text-purple-400 hover:text-purple-300 text-sm block w-full"
           >
             {isLogin
               ? "계정이 없으신가요? 회원가입"
               : "이미 계정이 있으신가요? 로그인"}
           </button>
+          {isLogin && (
+            <button
+              onClick={() => router.push("/reset-password")}
+              className="text-gray-400 hover:text-gray-300 text-sm block w-full"
+            >
+              비밀번호를 잊으셨나요?
+            </button>
+          )}
         </div>
       </div>
     </div>

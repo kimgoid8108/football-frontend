@@ -60,23 +60,172 @@ export function getAuthHeaders(): HeadersInit {
 // 회원가입
 export async function register(data: RegisterDto): Promise<AuthResponse> {
   try {
+    console.log("회원가입 요청:", `${API_BASE_URL}/auth/register`, data);
+
+    // 타임아웃 설정 (30초)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
+
+    console.log("회원가입 응답 상태:", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("API Error:", response.status, errorText);
-      throw new Error(`회원가입에 실패했습니다. (${response.status})`);
+      let errorMessage = `회원가입에 실패했습니다. (${response.status})`;
+
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.message) {
+          errorMessage = errorJson.message;
+        }
+      } catch {
+        // JSON 파싱 실패 시 원본 텍스트 사용
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+
+      throw new Error(errorMessage);
     }
 
-    return response.json();
-  } catch (error) {
+    const result = await response.json();
+    console.log("회원가입 성공:", result);
+    return result;
+  } catch (error: any) {
     console.error("register error:", error);
+    if (error.name === "AbortError") {
+      throw new Error("요청 시간이 초과되었습니다. 다시 시도해주세요.");
+    }
+    if (error.name === "TypeError" && error.message.includes("fetch")) {
+      throw new Error("서버에 연결할 수 없습니다. 네트워크를 확인해주세요.");
+    }
+    throw error;
+  }
+}
+
+// 비밀번호 재설정 요청
+export async function forgotPassword(
+  email: string
+): Promise<{ message: string; resetToken?: string }> {
+  try {
+    console.log(
+      "비밀번호 재설정 요청:",
+      `${API_BASE_URL}/auth/forgot-password`
+    );
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+    console.log("비밀번호 재설정 요청 응답 상태:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("API Error:", response.status, errorText);
+      let errorMessage = `비밀번호 재설정 요청에 실패했습니다. (${response.status})`;
+
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.message) {
+          errorMessage = errorJson.message;
+        }
+      } catch {
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log("비밀번호 재설정 요청 성공:", result);
+    return result;
+  } catch (error: any) {
+    console.error("forgotPassword error:", error);
+    if (error.name === "AbortError") {
+      throw new Error("요청 시간이 초과되었습니다. 다시 시도해주세요.");
+    }
+    if (error.name === "TypeError" && error.message.includes("fetch")) {
+      throw new Error("서버에 연결할 수 없습니다. 네트워크를 확인해주세요.");
+    }
+    throw error;
+  }
+}
+
+// 비밀번호 재설정
+export async function resetPassword(
+  token: string,
+  password: string
+): Promise<{ message: string }> {
+  try {
+    console.log("비밀번호 재설정:", `${API_BASE_URL}/auth/reset-password`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token, password }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+    console.log("비밀번호 재설정 응답 상태:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("API Error:", response.status, errorText);
+      let errorMessage = `비밀번호 재설정에 실패했습니다. (${response.status})`;
+
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.message) {
+          errorMessage = errorJson.message;
+        }
+      } catch {
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log("비밀번호 재설정 성공:", result);
+    return result;
+  } catch (error: any) {
+    console.error("resetPassword error:", error);
+    if (error.name === "AbortError") {
+      throw new Error("요청 시간이 초과되었습니다. 다시 시도해주세요.");
+    }
+    if (error.name === "TypeError" && error.message.includes("fetch")) {
+      throw new Error("서버에 연결할 수 없습니다. 네트워크를 확인해주세요.");
+    }
     throw error;
   }
 }
@@ -84,23 +233,56 @@ export async function register(data: RegisterDto): Promise<AuthResponse> {
 // 로그인
 export async function login(data: LoginDto): Promise<AuthResponse> {
   try {
+    console.log("로그인 요청:", `${API_BASE_URL}/auth/login`);
+
+    // 타임아웃 설정 (30초)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
+
+    console.log("로그인 응답 상태:", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("API Error:", response.status, errorText);
-      throw new Error(`로그인에 실패했습니다. (${response.status})`);
+      let errorMessage = `로그인에 실패했습니다. (${response.status})`;
+
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.message) {
+          errorMessage = errorJson.message;
+        }
+      } catch {
+        // JSON 파싱 실패 시 원본 텍스트 사용
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+
+      throw new Error(errorMessage);
     }
 
-    return response.json();
-  } catch (error) {
+    const result = await response.json();
+    console.log("로그인 성공:", result);
+    return result;
+  } catch (error: any) {
     console.error("login error:", error);
+    if (error.name === "AbortError") {
+      throw new Error("요청 시간이 초과되었습니다. 다시 시도해주세요.");
+    }
+    if (error.name === "TypeError" && error.message.includes("fetch")) {
+      throw new Error("서버에 연결할 수 없습니다. 네트워크를 확인해주세요.");
+    }
     throw error;
   }
 }
