@@ -1,9 +1,9 @@
-export { default as ErrorToast } from './ErrorToast';
-export { default as Controls } from './Controls';
-export { default as Field } from './Field';
-export { default as PlayerMarker } from './PlayerMarker';
-export { default as PlayerCard } from './PlayerCard';
-export { default as PlayerList } from './PlayerList';
-export { default as PositionSelect } from './PositionSelect';
-export { default as SaveLoadPanel } from './SaveLoadPanel';
-
+export { default as ErrorToast } from "./ErrorToast";
+export { default as Controls } from "./Controls";
+export { default as Field } from "./Field";
+export { default as PlayerMarker } from "./PlayerMarker";
+export { default as PlayerCard } from "./PlayerCard";
+export { default as PlayerList } from "./PlayerList";
+export { default as PositionSelect } from "./PositionSelect";
+export { default as SaveLoadPanel } from "./SaveLoadPanel";
+export { default as RandomizeModal } from "./RandomizeModal";

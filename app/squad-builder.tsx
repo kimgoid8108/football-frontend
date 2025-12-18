@@ -26,6 +26,7 @@ import {
   Field,
   PlayerList,
   SaveLoadPanel,
+  RandomizeModal,
 } from "./components/squad-builder";
 import {
   SquadData,
@@ -55,6 +56,7 @@ const SquadBuilder: React.FC = () => {
   const [currentSquadId, setCurrentSquadId] = useState<number | null>(null);
   const [pendingGameType, setPendingGameType] = useState<GameType | null>(null);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  const [showRandomizeModal, setShowRandomizeModal] = useState(false);
   const fieldRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastUpdateTimeRef = useRef<number>(0);
@@ -346,84 +348,42 @@ const SquadBuilder: React.FC = () => {
     [players]
   );
 
-  // 랜덤 배치
+  // 랜덤 배치 모달 열기
   const handleRandomize = useCallback((): void => {
     if (!formation || !FORMATIONS[formation]) {
       showError("포메이션을 먼저 선택해주세요.");
       return;
     }
+    setShowRandomizeModal(true);
+  }, [formation, showError]);
 
-    // 주전 선수만 가져오기 (벤치 제외)
-    const mainPlayers = players.filter((p) => !p.isBench);
+  // 랜덤 배치 확인
+  const handleRandomizeConfirm = useCallback(
+    (assignments: { position: string; name: string }[]): void => {
+      if (!formation || !FORMATIONS[formation]) return;
 
-    if (mainPlayers.length === 0) {
-      showError("배치할 선수가 없습니다.");
-      return;
-    }
+      const template = FORMATIONS[formation];
+      const benchPlayers = players.filter((p) => p.isBench);
 
-    const template = FORMATIONS[formation];
+      // 새로운 선수들 생성
+      const newPlayers: Player[] = template.map((t, index) => {
+        const assignment = assignments[index];
+        const coords = getDefaultPositionCoordinates(assignment.position);
 
-    // 포메이션에 필요한 선수 수보다 적으면 에러
-    if (mainPlayers.length < template.length) {
-      showError(
-        `포메이션에 필요한 선수 수(${template.length}명)보다 적습니다.`
-      );
-      return;
-    }
+        return {
+          id: Date.now() + index,
+          name: assignment.name,
+          position: assignment.position,
+          x: t.x,
+          y: t.y,
+        };
+      });
 
-    // 선수들을 랜덤하게 섞기
-    const shuffledPlayers = [...mainPlayers].sort(() => Math.random() - 0.5);
-
-    // 골키퍼 찾기 (축구 모드일 때만)
-    let gkPlayer: Player | null = null;
-    let availablePlayers = [...shuffledPlayers];
-
-    if (gameType === "football") {
-      // 골키퍼 포지션 찾기
-      const gkTemplateIndex = template.findIndex((t) => t.pos === "GK");
-      if (gkTemplateIndex !== -1) {
-        // 골키퍼 선수 찾기
-        const gkIndex = availablePlayers.findIndex((p) => p.position === "GK");
-        if (gkIndex !== -1) {
-          gkPlayer = availablePlayers.splice(gkIndex, 1)[0];
-        } else {
-          // 골키퍼 선수가 없으면 첫 번째 선수를 골키퍼로
-          gkPlayer = availablePlayers.shift()!;
-        }
-      }
-    }
-
-    // 포메이션 템플릿에 맞게 선수 배치
-    const newPlayers: Player[] = template.map((t) => {
-      let player: Player;
-
-      // 골키퍼 포지션이고 골키퍼 선수가 있으면 사용
-      if (t.pos === "GK" && gkPlayer) {
-        player = gkPlayer;
-      } else {
-        // 골키퍼가 아니면 랜덤 선수 사용
-        if (availablePlayers.length > 0) {
-          player = availablePlayers.shift()!;
-        } else {
-          // 선수가 부족하면 첫 번째 선수 재사용
-          player = shuffledPlayers[0];
-        }
-      }
-
-      return {
-        ...player,
-        position: t.pos,
-        x: t.x,
-        y: t.y,
-      };
-    });
-
-    // 벤치 선수는 그대로 유지
-    const benchPlayers = players.filter((p) => p.isBench);
-
-    setPlayers([...newPlayers, ...benchPlayers]);
-    showSuccess("선수들이 랜덤하게 배치되었습니다!");
-  }, [formation, players, gameType, showError, showSuccess]);
+      setPlayers([...newPlayers, ...benchPlayers]);
+      showSuccess("선수들이 배치되었습니다!");
+    },
+    [formation, players, showSuccess]
+  );
 
   // 선수 이름 변경
   const handleNameChange = useCallback((id: number, name: string): void => {
@@ -797,6 +757,20 @@ const SquadBuilder: React.FC = () => {
           ✅ {successMessage}
         </div>
       )}
+
+      {/* 랜덤 배치 모달 */}
+      <RandomizeModal
+        isOpen={showRandomizeModal}
+        onClose={() => setShowRandomizeModal(false)}
+        onConfirm={handleRandomizeConfirm}
+        formation={formation}
+        gameType={gameType}
+        existingPlayers={players.map((p) => ({
+          id: p.id,
+          name: p.name,
+          position: p.position,
+        }))}
+      />
 
       {/* 게임 타입 변경 시 저장 확인 모달 */}
       {showSaveConfirm && (
