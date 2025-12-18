@@ -163,20 +163,44 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
 
     // currentTeamIndex가 범위를 벗어나지 않도록 조정
     useEffect(() => {
-      if (teamEntries.length > 0 && currentTeamIndex >= teamEntries.length) {
-        setCurrentTeamIndex(0);
+      if (teamEntries.length > 0) {
+        if (currentTeamIndex >= teamEntries.length) {
+          setCurrentTeamIndex(0);
+        } else if (currentTeamIndex < 0) {
+          setCurrentTeamIndex(0);
+        }
+      } else {
+        // 팀이 없으면 인덱스 리셋
+        if (onTeamIndexChange) {
+          onTeamIndexChange(0);
+        } else {
+          setInternalTeamIndex(0);
+        }
       }
-    }, [teamEntries.length, currentTeamIndex]);
+    }, [
+      teamEntries.length,
+      currentTeamIndex,
+      setCurrentTeamIndex,
+      onTeamIndexChange,
+    ]);
 
     // 현재 표시할 선수들
     const currentPlayers = useMemo(() => {
-      if (showCarousel && teamEntries.length > 0) {
-        const validIndex = Math.min(currentTeamIndex, teamEntries.length - 1);
+      // 팀이 여러 개일 때는 현재 선택된 팀의 선수만 표시
+      if (hasMultipleTeams && teamEntries.length > 0) {
+        const validIndex = Math.min(
+          Math.max(0, currentTeamIndex),
+          teamEntries.length - 1
+        );
         const teamPlayers = teamEntries[validIndex]?.[1] || [];
-        return teamPlayers.length > 0 ? teamPlayers : players; // 팀 선수가 없으면 모든 선수 표시
+        // 팀 선수가 있으면 해당 팀만 표시
+        if (teamPlayers.length > 0) {
+          return teamPlayers;
+        }
       }
-      return players; // 팀이 1개 이하일 때는 모든 선수 표시
-    }, [showCarousel, teamEntries, currentTeamIndex, players]);
+      // 팀이 1개 이하이거나 팀 선수가 없으면 모든 선수 표시
+      return players;
+    }, [hasMultipleTeams, teamEntries, currentTeamIndex, players]);
 
     // 스와이프/드래그 처리
     const handleTouchStart = (e: React.TouchEvent) => {

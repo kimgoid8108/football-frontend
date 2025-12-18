@@ -416,6 +416,8 @@ const SquadBuilder: React.FC = () => {
       }
 
       setPlayers([...allPlayers, ...benchPlayers]);
+      // 랜덤 배치 후 첫 번째 팀으로 초기화
+      setCurrentTeamIndex(0);
       showSuccess(
         `${teams.length}개 팀이 배치되고 저장되었습니다! (${savedTeamNames.join(
           ", "
