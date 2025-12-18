@@ -54,6 +54,7 @@ const SquadBuilder: React.FC = () => {
   const isLoadingSquadRef = useRef<boolean>(false);
   const hasInitializedRef = useRef<boolean>(false);
   const playersRef = useRef<Player[]>([]);
+  const loadedSquadRef = useRef<SquadData | null>(null); // 로드된 스쿼드 원본 저장
 
   const handleLogout = () => {
     logout();
@@ -203,6 +204,43 @@ const SquadBuilder: React.FC = () => {
     };
   }, [draggedPlayer, gameType]);
 
+  // 스쿼드 변경사항 확인 함수
+  const hasChanges = useCallback((): boolean => {
+    // 로드된 스쿼드가 없으면 변경사항 없음
+    if (!loadedSquadRef.current) return false;
+
+    const loadedSquad = loadedSquadRef.current;
+
+    // 선수 수가 다르면 변경사항 있음
+    if (players.length !== loadedSquad.players.length) return true;
+
+    // 포메이션이 다르면 변경사항 있음
+    if (formation !== loadedSquad.formation) return true;
+
+    // 각 선수의 정보 비교
+    for (const currentPlayer of players) {
+      const loadedPlayer = loadedSquad.players.find(
+        (p) => p.id === currentPlayer.id
+      );
+
+      // 선수가 로드된 스쿼드에 없으면 변경사항 있음
+      if (!loadedPlayer) return true;
+
+      // 선수 정보가 다르면 변경사항 있음
+      if (
+        currentPlayer.name !== loadedPlayer.name ||
+        currentPlayer.position !== loadedPlayer.position ||
+        Math.abs(currentPlayer.x - loadedPlayer.x) > 0.1 ||
+        Math.abs(currentPlayer.y - loadedPlayer.y) > 0.1 ||
+        currentPlayer.isBench !== loadedPlayer.isBench
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [players, formation]);
+
   // 게임 타입 변경 핸들러
   const handleGameTypeChange = useCallback(
     (newGameType: GameType): void => {
@@ -211,16 +249,16 @@ const SquadBuilder: React.FC = () => {
 
       // 선수가 있고 변경사항이 있으면 저장 확인
       const mainPlayers = players.filter((p) => !p.isBench);
-      if (mainPlayers.length > 0) {
+      if (mainPlayers.length > 0 && hasChanges()) {
         setPendingGameType(newGameType);
         setShowSaveConfirm(true);
         return;
       }
 
-      // 선수가 없으면 바로 변경
+      // 선수가 없거나 변경사항이 없으면 바로 변경
       proceedGameTypeChange(newGameType);
     },
-    [gameType, players]
+    [gameType, players, hasChanges]
   );
 
   // 게임 타입 변경 실행
@@ -228,6 +266,7 @@ const SquadBuilder: React.FC = () => {
     setGameType(newGameType);
     setPlayers([]); // 게임 타입 변경 시 선수 초기화
     setCurrentSquadId(null); // 게임 타입 변경 시 현재 스쿼드 ID 초기화
+    loadedSquadRef.current = null; // 로드된 스쿼드 원본 초기화
     hasInitializedRef.current = false; // 초기화 플래그 리셋
     // 기본 포메이션 설정
     if (newGameType === "football") {
@@ -583,6 +622,12 @@ const SquadBuilder: React.FC = () => {
 
       // 현재 로드된 스쿼드 ID 저장
       setCurrentSquadId(squad.id || null);
+
+      // 로드된 스쿼드 원본 저장 (깊은 복사)
+      loadedSquadRef.current = {
+        ...squad,
+        players: squad.players.map((p) => ({ ...p })),
+      };
 
       // gameType을 먼저 변경하고, 그 다음 formation과 players를 설정
       if (targetGameType !== gameType) {
