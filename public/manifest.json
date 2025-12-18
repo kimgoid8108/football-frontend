@@ -1,0 +1,24 @@
+{
+  "name": "축구 스쿼드 빌더",
+  "short_name": "스쿼드 빌더",
+  "description": "축구 및 풋살 스쿼드를 만들고 관리하세요",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#15803d",
+  "theme_color": "#15803d",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
