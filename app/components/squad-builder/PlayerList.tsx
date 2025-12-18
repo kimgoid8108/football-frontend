@@ -27,6 +27,8 @@ interface PlayerListProps {
   onToggleBench?: (id: number) => void;
   onAddBenchPlayer?: () => void;
   gameType?: GameType;
+  currentTeamIndex?: number;
+  onTeamIndexChange?: (index: number) => void;
 }
 
 const PlayerList: React.FC<PlayerListProps> = ({
@@ -40,6 +42,8 @@ const PlayerList: React.FC<PlayerListProps> = ({
   onToggleBench,
   onAddBenchPlayer,
   gameType = "football",
+  currentTeamIndex: externalTeamIndex,
+  onTeamIndexChange,
 }) => {
   const mainPlayers = players.filter((p) => !p.isBench);
   const benchPlayers = players.filter((p) => p.isBench);
@@ -47,7 +51,19 @@ const PlayerList: React.FC<PlayerListProps> = ({
 
   // 모바일 감지
   const [isMobile, setIsMobile] = useState(false);
-  const [currentTeamIndex, setCurrentTeamIndex] = useState(0);
+  const [internalTeamIndex, setInternalTeamIndex] = useState(0);
+
+  // 외부에서 전달된 팀 인덱스가 있으면 사용, 없으면 내부 상태 사용
+  const currentTeamIndex =
+    externalTeamIndex !== undefined ? externalTeamIndex : internalTeamIndex;
+
+  const setCurrentTeamIndex = (index: number) => {
+    if (onTeamIndexChange) {
+      onTeamIndexChange(index);
+    } else {
+      setInternalTeamIndex(index);
+    }
+  };
   const carouselRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number>(0);
   const touchEndX = useRef<number>(0);

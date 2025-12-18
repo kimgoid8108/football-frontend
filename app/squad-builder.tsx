@@ -57,6 +57,7 @@ const SquadBuilder: React.FC = () => {
   const [pendingGameType, setPendingGameType] = useState<GameType | null>(null);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [showRandomizeModal, setShowRandomizeModal] = useState(false);
+  const [currentTeamIndex, setCurrentTeamIndex] = useState(0);
   const fieldRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastUpdateTimeRef = useRef<number>(0);
@@ -991,6 +992,8 @@ const SquadBuilder: React.FC = () => {
               onPlayerMouseDown={handleBallMouseDown}
               onPlayerTouchStart={handleBallTouchStart}
               gameType={gameType}
+              currentTeamIndex={currentTeamIndex}
+              onTeamIndexChange={setCurrentTeamIndex}
             />
           </div>
 
@@ -1012,6 +1015,8 @@ const SquadBuilder: React.FC = () => {
               onToggleBench={toggleBench}
               onAddBenchPlayer={addBenchPlayer}
               gameType={gameType}
+              currentTeamIndex={currentTeamIndex}
+              onTeamIndexChange={setCurrentTeamIndex}
             />
           </div>
         </div>

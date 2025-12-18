@@ -15,6 +15,8 @@ interface FieldProps {
     player: Player
   ) => void;
   gameType?: GameType;
+  currentTeamIndex?: number;
+  onTeamIndexChange?: (index: number) => void;
 }
 
 // 축구용 포지션 영역 정의
@@ -85,6 +87,8 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
       onPlayerMouseDown,
       onPlayerTouchStart,
       gameType = "football",
+      currentTeamIndex: externalTeamIndex,
+      onTeamIndexChange,
     },
     ref
   ) => {
@@ -97,7 +101,19 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
 
     // 모바일 감지 및 팀별 그룹화
     const [isMobile, setIsMobile] = useState(false);
-    const [currentTeamIndex, setCurrentTeamIndex] = useState(0);
+    const [internalTeamIndex, setInternalTeamIndex] = useState(0);
+
+    // 외부에서 전달된 팀 인덱스가 있으면 사용, 없으면 내부 상태 사용
+    const currentTeamIndex =
+      externalTeamIndex !== undefined ? externalTeamIndex : internalTeamIndex;
+
+    const setCurrentTeamIndex = (index: number) => {
+      if (onTeamIndexChange) {
+        onTeamIndexChange(index);
+      } else {
+        setInternalTeamIndex(index);
+      }
+    };
     const carouselRef = useRef<HTMLDivElement>(null);
     const touchStartX = useRef<number>(0);
     const touchEndX = useRef<number>(0);
