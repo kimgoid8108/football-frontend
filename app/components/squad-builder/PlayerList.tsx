@@ -231,76 +231,9 @@ const PlayerList: React.FC<PlayerListProps> = ({
         {/* 팀별로 표시 (팀이 있는 경우) */}
         {hasTeams ? (
           <>
-            {isMobile && teamEntries.length > 1 ? (
-              /* 모바일: 캐러셀 형태 */
-              <div className="relative">
-                <div
-                  ref={carouselRef}
-                  className="flex overflow-hidden"
-                  onTouchStart={handleTouchStart}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                  style={{
-                    transform: `translateX(-${currentTeamIndex * 100}%)`,
-                    transition: "transform 0.3s ease-in-out",
-                  }}
-                >
-                  {teamEntries.map(([teamName, teamPlayers], index) => (
-                    <div key={teamName} className="w-full flex-shrink-0">
-                      {renderTeam(teamName, teamPlayers, index)}
-                    </div>
-                  ))}
-                </div>
-
-                {/* 네비게이션 버튼 */}
-                <div className="flex items-center justify-between mt-3 px-2">
-                  <button
-                    onClick={() =>
-                      setCurrentTeamIndex((prev) =>
-                        prev > 0 ? prev - 1 : prev
-                      )
-                    }
-                    disabled={currentTeamIndex === 0}
-                    className="p-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded text-white transition"
-                  >
-                    <ChevronLeft size={20} />
-                  </button>
-                  <div className="flex items-center gap-2">
-                    {teamEntries.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentTeamIndex(index)}
-                        className={`w-2 h-2 rounded-full transition ${
-                          index === currentTeamIndex
-                            ? "bg-purple-500 w-6"
-                            : "bg-gray-600"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-white text-sm font-medium">
-                    {currentTeamIndex + 1} / {teamEntries.length}
-                  </span>
-                  <button
-                    onClick={() =>
-                      setCurrentTeamIndex((prev) =>
-                        prev < teamEntries.length - 1 ? prev + 1 : prev
-                      )
-                    }
-                    disabled={currentTeamIndex === teamEntries.length - 1}
-                    className="p-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded text-white transition"
-                  >
-                    <ChevronRight size={20} />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* 데스크톱 또는 팀이 1개: 기존 방식 */
-              <>
-                {teamEntries.map(([teamName, teamPlayers], index) =>
-                  renderTeam(teamName, teamPlayers, index)
-                )}
-              </>
+            {/* 모든 팀을 한 번에 표시 (모바일/데스크톱 모두) */}
+            {teamEntries.map(([teamName, teamPlayers], index) =>
+              renderTeam(teamName, teamPlayers, index)
             )}
 
             {/* 팀이 없는 선수들 */}

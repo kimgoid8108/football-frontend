@@ -39,6 +39,37 @@ const RandomizeModal: React.FC<RandomizeModalProps> = ({
     }
   }, [isOpen, template.length]);
 
+  // 팀 수와 인원 수에 따라 입력 필드 자동 조정
+  useEffect(() => {
+    const totalNeeded = numTeams * playersPerTeam;
+    const currentCount = playerNames.length;
+
+    if (currentCount < totalNeeded) {
+      // 부족한 만큼 추가
+      const needed = totalNeeded - currentCount;
+      setPlayerNames((prev) => [...prev, ...Array(needed).fill("")]);
+    } else if (currentCount > totalNeeded) {
+      // 초과하는 만큼 제거 (빈 필드부터)
+      const excess = currentCount - totalNeeded;
+      setPlayerNames((prev) => {
+        const newNames = [...prev];
+        // 뒤에서부터 빈 필드 제거
+        let removed = 0;
+        for (let i = newNames.length - 1; i >= 0 && removed < excess; i--) {
+          if (!newNames[i].trim()) {
+            newNames.splice(i, 1);
+            removed++;
+          }
+        }
+        // 빈 필드가 없으면 뒤에서부터 제거
+        if (removed < excess) {
+          newNames.splice(-(excess - removed));
+        }
+        return newNames;
+      });
+    }
+  }, [numTeams, playersPerTeam]);
+
   // 모달이 열려있을 때 배경 스크롤 방지
   useEffect(() => {
     if (isOpen) {
