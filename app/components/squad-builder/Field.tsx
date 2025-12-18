@@ -1,6 +1,7 @@
-import React, { forwardRef, useMemo } from "react";
+import React, { forwardRef, useMemo, useState, useEffect, useRef } from "react";
 import { Player, GameType } from "../../types/squad-builder";
 import PlayerMarker from "./PlayerMarker";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface FieldProps {
   players: Player[];
@@ -94,27 +95,148 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
       [gameType]
     );
 
+    // 모바일 감지 및 팀별 그룹화
+    const [isMobile, setIsMobile] = useState(false);
+    const [currentTeamIndex, setCurrentTeamIndex] = useState(0);
+    const carouselRef = useRef<HTMLDivElement>(null);
+    const touchStartX = useRef<number>(0);
+    const touchEndX = useRef<number>(0);
+
+    useEffect(() => {
+      const checkMobile = () => {
+        setIsMobile(window.innerWidth < 768);
+      };
+      checkMobile();
+      window.addEventListener("resize", checkMobile);
+      return () => window.removeEventListener("resize", checkMobile);
+    }, []);
+
+    // 팀별로 그룹화
+    const { teams, noTeamPlayers } = useMemo(() => {
+      const teamsMap: { [teamName: string]: Player[] } = {};
+      const noTeam: Player[] = [];
+
+      players.forEach((player) => {
+        if (player.teamName) {
+          if (!teamsMap[player.teamName]) {
+            teamsMap[player.teamName] = [];
+          }
+          teamsMap[player.teamName].push(player);
+        } else {
+          noTeam.push(player);
+        }
+      });
+
+      return { teams: teamsMap, noTeamPlayers: noTeam };
+    }, [players]);
+
+    const teamEntries = Object.entries(teams);
+    const hasMultipleTeams = teamEntries.length > 1;
+    const showCarousel = isMobile && hasMultipleTeams;
+
+    // 현재 표시할 선수들
+    const currentPlayers = useMemo(() => {
+      if (showCarousel && teamEntries.length > 0) {
+        return teamEntries[currentTeamIndex]?.[1] || [];
+      }
+      return players; // 데스크톱이거나 팀이 1개 이하일 때는 모든 선수 표시
+    }, [showCarousel, teamEntries, currentTeamIndex, players]);
+
+    // 스와이프 처리
+    const handleTouchStart = (e: React.TouchEvent) => {
+      touchStartX.current = e.touches[0].clientX;
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+      touchEndX.current = e.touches[0].clientX;
+    };
+
+    const handleTouchEnd = () => {
+      if (!touchStartX.current || !touchEndX.current) return;
+      const distance = touchStartX.current - touchEndX.current;
+      const minSwipeDistance = 50;
+
+      if (
+        distance > minSwipeDistance &&
+        currentTeamIndex < teamEntries.length - 1
+      ) {
+        // 왼쪽으로 스와이프 (다음 팀)
+        setCurrentTeamIndex((prev) => prev + 1);
+      } else if (distance < -minSwipeDistance && currentTeamIndex > 0) {
+        // 오른쪽으로 스와이프 (이전 팀)
+        setCurrentTeamIndex((prev) => prev - 1);
+      }
+      touchStartX.current = 0;
+      touchEndX.current = 0;
+    };
+
     return (
-      <div
-        ref={ref}
-        className="relative bg-green-700 rounded-lg shadow-2xl max-w-[393px] md:max-w-[600px]"
-        style={{
-          backgroundImage:
-            "linear-gradient(0deg, #15803d 0%, #15803d 50%, #166534 50%, #166534 100%)",
-          backgroundSize: "100% 20px",
-          aspectRatio: "9 / 16", // 모바일 세로 방향
-          width: "100%",
-          margin: "0 auto",
-          boxSizing: "border-box",
-          overflow: "visible", // 골키퍼가 잘리지 않도록
-          position: "relative",
-        }}
-      >
-        {/* 필드 내부 컨테이너 (패딩 영역 - 골키퍼 잘림 방지) */}
+      <div className="relative">
+        {/* 팀 네비게이션 (모바일에서만 표시) */}
+        {showCarousel && (
+          <div className="flex items-center justify-between mb-3 px-2">
+            <button
+              onClick={() =>
+                setCurrentTeamIndex((prev) => (prev > 0 ? prev - 1 : prev))
+              }
+              disabled={currentTeamIndex === 0}
+              className="p-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded text-white transition"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <div className="flex items-center gap-2">
+              {teamEntries.map(([teamName], index) => (
+                <button
+                  key={teamName}
+                  onClick={() => setCurrentTeamIndex(index)}
+                  className={`h-2 rounded-full transition ${
+                    index === currentTeamIndex
+                      ? "bg-purple-500 w-6"
+                      : "bg-gray-600 w-2"
+                  }`}
+                />
+              ))}
+            </div>
+            <div className="text-white text-sm font-medium min-w-[60px] text-center">
+              {teamEntries[currentTeamIndex]?.[0] || ""}
+            </div>
+            <button
+              onClick={() =>
+                setCurrentTeamIndex((prev) =>
+                  prev < teamEntries.length - 1 ? prev + 1 : prev
+                )
+              }
+              disabled={currentTeamIndex === teamEntries.length - 1}
+              className="p-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded text-white transition"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+        )}
+
         <div
-          className="absolute inset-0"
-          style={{ padding: "clamp(8px, 3%, 12px)" }}
+          ref={ref}
+          className="relative bg-green-700 rounded-lg shadow-2xl max-w-[393px] md:max-w-[600px]"
+          style={{
+            backgroundImage:
+              "linear-gradient(0deg, #15803d 0%, #15803d 50%, #166534 50%, #166534 100%)",
+            backgroundSize: "100% 20px",
+            aspectRatio: "9 / 16", // 모바일 세로 방향
+            width: "100%",
+            margin: "0 auto",
+            boxSizing: "border-box",
+            overflow: "visible", // 골키퍼가 잘리지 않도록
+            position: "relative",
+          }}
+          onTouchStart={showCarousel ? handleTouchStart : undefined}
+          onTouchMove={showCarousel ? handleTouchMove : undefined}
+          onTouchEnd={showCarousel ? handleTouchEnd : undefined}
         >
+          {/* 필드 내부 컨테이너 (패딩 영역 - 골키퍼 잘림 방지) */}
+          <div
+            className="absolute inset-0"
+            style={{ padding: "clamp(8px, 3%, 12px)" }}
+          >
           {/* 포지션 영역 오버레이 (드래그 중일 때만 표시) */}
           {isDragging && (
             <div
@@ -198,7 +320,7 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
           </svg>
 
           {/* 선수 마커 */}
-          {players.map((player) => (
+          {currentPlayers.map((player) => (
             <PlayerMarker
               key={player.id}
               player={player}
