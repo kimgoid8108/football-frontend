@@ -15,11 +15,11 @@ const Controls: React.FC<ControlsProps> = ({
   onRandomize,
 }) => {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 flex-wrap justify-center">
       <select
         value={formation}
         onChange={(e) => onFormationChange(e.target.value)}
-        className="bg-gray-800 text-white px-4 py-3 rounded-lg border border-gray-700"
+        className="bg-gray-800 text-white px-4 py-3 rounded-lg border border-gray-700 min-w-[120px]"
       >
         {formations.map((key) => (
           <option key={key} value={key}>
@@ -27,16 +27,15 @@ const Controls: React.FC<ControlsProps> = ({
           </option>
         ))}
       </select>
-      {onRandomize && (
-        <button
-          onClick={onRandomize}
-          className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg flex items-center gap-2 transition font-medium"
-          title="현재 선수들을 랜덤하게 배치"
-        >
-          <Shuffle size={20} />
-          랜덤 배치
-        </button>
-      )}
+      <button
+        onClick={onRandomize}
+        disabled={!onRandomize}
+        className="bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 transition font-medium whitespace-nowrap min-w-[140px]"
+        title="현재 선수들을 랜덤하게 배치"
+      >
+        <Shuffle size={20} />
+        <span>랜덤 배치</span>
+      </button>
     </div>
   );
 };
