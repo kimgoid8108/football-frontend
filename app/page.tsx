@@ -86,11 +86,18 @@ export default function Home() {
     const token = getToken();
     const guestMode = sessionStorage.getItem("guestMode");
 
+    console.log("서버 준비 완료, 인증 상태 확인:", {
+      token: !!token,
+      guestMode: !!guestMode,
+    });
+
     // 토큰이 없고 비계정 모드도 아니면 로그인 페이지로 리다이렉트
     if (!token && !guestMode) {
+      console.log("로그인 페이지로 리다이렉트");
       setShouldShowLogin(true);
       router.replace("/login");
     } else {
+      console.log("스쿼드 빌더 표시");
       setShouldShowLogin(false);
     }
   }, [isServerReady, isCheckingServer, router]);
@@ -103,6 +110,11 @@ export default function Home() {
   // 토큰이 없어서 로그인 페이지로 리다이렉트 중이면 아무것도 표시하지 않음
   if (shouldShowLogin === true) {
     return null;
+  }
+
+  // shouldShowLogin이 null이면 아직 결정되지 않았으므로 로딩 화면 표시
+  if (shouldShowLogin === null) {
+    return <ServerLoading />;
   }
 
   // 비계정 모드 지원: 토큰이 없어도 스쿼드 빌더 사용 가능
