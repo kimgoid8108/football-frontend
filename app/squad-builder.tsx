@@ -96,15 +96,13 @@ const SquadBuilder: React.FC = () => {
     }
   }, [gameType]);
 
-  // 현재 포메이션이 사용 가능한 포메이션 목록에 없으면 기본 포메이션으로 설정
-  // 단, 스쿼드를 불러오는 중이면 건너뛰기
+  // 현재 포메이션이 사용 불가능하면 기본 포메이션으로 설정
   useEffect(() => {
     if (
       !isLoadingSquadRef.current &&
       !availableFormations.includes(formation)
     ) {
-      const defaultFormation = gameType === "football" ? "4-3-3" : "5인 1-2-1";
-      setFormation(defaultFormation);
+      setFormation(gameType === "football" ? "4-3-3" : "5인 1-2-1");
     }
   }, [gameType, availableFormations, formation]);
 
@@ -114,28 +112,23 @@ const SquadBuilder: React.FC = () => {
       !isLoadingSquadRef.current &&
       !hasInitializedRef.current &&
       players.length === 0 &&
-      !currentSquadId && // 스쿼드가 로드된 상태가 아닐 때만
+      !currentSquadId &&
       formation &&
       FORMATIONS[formation]
     ) {
       const template = FORMATIONS[formation];
-      const usedNames: string[] = [];
-
-      const newPlayers: Player[] = template.map((t, i) => {
-        const name = getRandomName([]);
-        usedNames.push(name);
-        return {
+      setPlayers(
+        template.map((t, i) => ({
           id: Date.now() + i,
-          name,
+          name: getRandomName([]),
           position: t.pos,
           x: t.x,
           y: t.y,
-        };
-      });
-      setPlayers(newPlayers);
+        }))
+      );
       hasInitializedRef.current = true;
     }
-  }, [formation]); // formation이 변경될 때만 실행
+  }, [formation, players.length, currentSquadId]);
 
   // 컴포넌트 언마운트 시 animationFrame 정리
   useEffect(() => {
@@ -162,45 +155,39 @@ const SquadBuilder: React.FC = () => {
     };
 
     const handleTouchStartNative = (e: TouchEvent) => {
-      // 드래그 가능한 요소에서 터치가 시작된 경우에만 preventDefault
       const target = e.target as HTMLElement;
       const draggableElement = target.closest('[data-draggable="true"]');
-      if (draggableElement) {
-        // 골키퍼 체크 (축구 모드일 때만)
-        const isGK = draggableElement.getAttribute("data-position") === "GK";
-        if (!isGK || gameType === "futsal") {
-          e.preventDefault(); // non-passive 리스너이므로 preventDefault 가능
-          e.stopPropagation(); // React 이벤트 핸들러가 실행되지 않도록
+      if (!draggableElement) return;
 
-          // player 정보를 가져와서 드래그 시작 처리
-          const playerId = draggableElement.getAttribute("data-player-id");
-          if (playerId) {
-            // ref를 통해 최신 players 값 사용
-            const player = playersRef.current.find(
-              (p) => p.id === Number(playerId)
-            );
-            if (player) {
-              const rect = draggableElement.getBoundingClientRect();
-              const touch = e.touches[0];
-              setDragOffset({
-                x: touch.clientX - rect.left - rect.width / 2,
-                y: touch.clientY - rect.top - rect.height / 2,
-              });
-              setDraggedPlayer(player);
-            }
-          }
+      const isGK = draggableElement.getAttribute("data-position") === "GK";
+      if (isGK && gameType === "football") return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const playerId = draggableElement.getAttribute("data-player-id");
+      if (playerId) {
+        const player = playersRef.current.find(
+          (p) => p.id === Number(playerId)
+        );
+        if (player) {
+          const rect = draggableElement.getBoundingClientRect();
+          const touch = e.touches[0];
+          setDragOffset({
+            x: touch.clientX - rect.left - rect.width / 2,
+            y: touch.clientY - rect.top - rect.height / 2,
+          });
+          setDraggedPlayer(player);
         }
       }
     };
 
-    // capture phase에서 non-passive 옵션으로 터치 이벤트 리스너 추가
-    // capture phase에서 실행하여 React 이벤트 핸들러보다 먼저 실행되도록 함
     fieldElement.addEventListener("touchmove", handleTouchMoveNative, {
       passive: false,
     });
     fieldElement.addEventListener("touchstart", handleTouchStartNative, {
       passive: false,
-      capture: true, // capture phase에서 실행
+      capture: true,
     });
 
     return () => {
@@ -211,50 +198,38 @@ const SquadBuilder: React.FC = () => {
     };
   }, [draggedPlayer, gameType]);
 
-  // 스쿼드 변경사항 확인 함수
+  // 스쿼드 변경사항 확인
   const hasChanges = useCallback((): boolean => {
-    // 로드된 스쿼드가 없으면 변경사항 없음
     if (!loadedSquadRef.current) return false;
 
-    const loadedSquad = loadedSquadRef.current;
-
-    // 선수 수가 다르면 변경사항 있음
-    if (players.length !== loadedSquad.players.length) return true;
-
-    // 포메이션이 다르면 변경사항 있음
-    if (formation !== loadedSquad.formation) return true;
-
-    // 각 선수의 정보 비교
-    for (const currentPlayer of players) {
-      const loadedPlayer = loadedSquad.players.find(
-        (p) => p.id === currentPlayer.id
-      );
-
-      // 선수가 로드된 스쿼드에 없으면 변경사항 있음
-      if (!loadedPlayer) return true;
-
-      // 선수 정보가 다르면 변경사항 있음
-      if (
-        currentPlayer.name !== loadedPlayer.name ||
-        currentPlayer.position !== loadedPlayer.position ||
-        Math.abs(currentPlayer.x - loadedPlayer.x) > 0.1 ||
-        Math.abs(currentPlayer.y - loadedPlayer.y) > 0.1 ||
-        currentPlayer.isBench !== loadedPlayer.isBench
-      ) {
-        return true;
-      }
+    const loaded = loadedSquadRef.current;
+    if (
+      players.length !== loaded.players.length ||
+      formation !== loaded.formation
+    ) {
+      return true;
     }
 
-    return false;
+    return players.some((current) => {
+      const loaded = loadedSquadRef.current!.players.find(
+        (p) => p.id === current.id
+      );
+      return (
+        !loaded ||
+        current.name !== loaded.name ||
+        current.position !== loaded.position ||
+        Math.abs(current.x - loaded.x) > 0.1 ||
+        Math.abs(current.y - loaded.y) > 0.1 ||
+        current.isBench !== loaded.isBench
+      );
+    });
   }, [players, formation]);
 
   // 게임 타입 변경 핸들러
   const handleGameTypeChange = useCallback(
     (newGameType: GameType): void => {
-      // 현재 게임 타입과 같으면 변경하지 않음
       if (newGameType === gameType) return;
 
-      // 선수가 있고 변경사항이 있으면 저장 확인
       const mainPlayers = players.filter((p) => !p.isBench);
       if (mainPlayers.length > 0 && hasChanges()) {
         setPendingGameType(newGameType);
@@ -262,25 +237,19 @@ const SquadBuilder: React.FC = () => {
         return;
       }
 
-      // 선수가 없거나 변경사항이 없으면 바로 변경
       proceedGameTypeChange(newGameType);
     },
-    [gameType, players, hasChanges]
+    [gameType, players, hasChanges, proceedGameTypeChange]
   );
 
   // 게임 타입 변경 실행
   const proceedGameTypeChange = useCallback((newGameType: GameType): void => {
     setGameType(newGameType);
-    setPlayers([]); // 게임 타입 변경 시 선수 초기화
-    setCurrentSquadId(null); // 게임 타입 변경 시 현재 스쿼드 ID 초기화
-    loadedSquadRef.current = null; // 로드된 스쿼드 원본 초기화
-    hasInitializedRef.current = false; // 초기화 플래그 리셋
-    // 기본 포메이션 설정
-    if (newGameType === "football") {
-      setFormation("4-3-3");
-    } else {
-      setFormation("5인 1-2-1");
-    }
+    setPlayers([]);
+    setCurrentSquadId(null);
+    loadedSquadRef.current = null;
+    hasInitializedRef.current = false;
+    setFormation(newGameType === "football" ? "4-3-3" : "5인 1-2-1");
   }, []);
 
   // 현재 스쿼드 저장 후 게임 타입 변경
@@ -309,32 +278,22 @@ const SquadBuilder: React.FC = () => {
       let savedSquad: SquadData;
 
       // 현재 로드된 스쿼드가 있으면 업데이트, 없으면 새로 생성
-      if (currentSquadId) {
-        if (isGuestMode) {
-          updateLocalSquad(currentSquadId, squadData);
-          savedSquad = { ...squadData, id: currentSquadId };
-          showSuccess("스쿼드가 업데이트되었습니다!");
-        } else {
-          savedSquad = await updateSquad(currentSquadId, squadData);
-          showSuccess("스쿼드가 업데이트되었습니다!");
-        }
+      const isUpdate = !!currentSquadId;
+      if (isUpdate) {
+        savedSquad = isGuestMode
+          ? (updateLocalSquad(currentSquadId, squadData),
+            { ...squadData, id: currentSquadId })
+          : await updateSquad(currentSquadId, squadData);
+        showSuccess("스쿼드가 업데이트되었습니다!");
       } else {
-        if (isGuestMode) {
-          savedSquad = saveLocalSquad(squadData);
-          showSuccess("스쿼드가 저장되었습니다!");
-        } else {
-          savedSquad = await createSquad(squadData);
-          showSuccess("스쿼드가 저장되었습니다!");
-        }
+        savedSquad = isGuestMode
+          ? saveLocalSquad(squadData)
+          : await createSquad(squadData);
+        showSuccess("스쿼드가 저장되었습니다!");
       }
 
-      // 저장한 스쿼드 ID 저장 (게임 타입 변경 후에도 유지)
       const savedSquadId = savedSquad.id;
-
-      // 게임 타입 변경 실행
       proceedGameTypeChange(pendingGameType);
-
-      // 게임 타입 변경 후 저장한 스쿼드 ID 유지 (저장한 스쿼드가 계속 표시되도록)
       if (savedSquadId) {
         setCurrentSquadId(savedSquadId);
       }
@@ -368,33 +327,107 @@ const SquadBuilder: React.FC = () => {
   const loadFormation = useCallback(
     (formationKey: string): void => {
       setFormation(formationKey);
-      setCurrentSquadId(null); // 포메이션 변경 시 현재 스쿼드 ID 초기화
+      setCurrentSquadId(null);
       const template = FORMATIONS[formationKey];
       const usedNames: string[] = [];
 
-      const newPlayers: Player[] = template.map((t, i) => {
-        const name = getRandomName([
-          ...players.filter((p: Player) => usedNames.includes(p.name)),
-        ]);
-        usedNames.push(name);
-        return {
+      setPlayers(
+        template.map((t, i) => ({
           id: Date.now() + i,
-          name,
+          name: getRandomName(
+            players.filter((p) => usedNames.includes(p.name))
+          ),
           position: t.pos,
           x: t.x,
           y: t.y,
-        };
-      });
-      setPlayers(newPlayers);
+        }))
+      );
     },
     [players]
   );
 
+  // 랜덤 배치
+  const handleRandomize = useCallback((): void => {
+    if (!formation || !FORMATIONS[formation]) {
+      showError("포메이션을 먼저 선택해주세요.");
+      return;
+    }
+
+    // 주전 선수만 가져오기 (벤치 제외)
+    const mainPlayers = players.filter((p) => !p.isBench);
+
+    if (mainPlayers.length === 0) {
+      showError("배치할 선수가 없습니다.");
+      return;
+    }
+
+    const template = FORMATIONS[formation];
+
+    // 포메이션에 필요한 선수 수보다 적으면 에러
+    if (mainPlayers.length < template.length) {
+      showError(
+        `포메이션에 필요한 선수 수(${template.length}명)보다 적습니다.`
+      );
+      return;
+    }
+
+    // 선수들을 랜덤하게 섞기
+    const shuffledPlayers = [...mainPlayers].sort(() => Math.random() - 0.5);
+
+    // 골키퍼 찾기 (축구 모드일 때만)
+    let gkPlayer: Player | null = null;
+    let availablePlayers = [...shuffledPlayers];
+
+    if (gameType === "football") {
+      // 골키퍼 포지션 찾기
+      const gkTemplateIndex = template.findIndex((t) => t.pos === "GK");
+      if (gkTemplateIndex !== -1) {
+        // 골키퍼 선수 찾기
+        const gkIndex = availablePlayers.findIndex((p) => p.position === "GK");
+        if (gkIndex !== -1) {
+          gkPlayer = availablePlayers.splice(gkIndex, 1)[0];
+        } else {
+          // 골키퍼 선수가 없으면 첫 번째 선수를 골키퍼로
+          gkPlayer = availablePlayers.shift()!;
+        }
+      }
+    }
+
+    // 포메이션 템플릿에 맞게 선수 배치
+    const newPlayers: Player[] = template.map((t) => {
+      let player: Player;
+
+      // 골키퍼 포지션이고 골키퍼 선수가 있으면 사용
+      if (t.pos === "GK" && gkPlayer) {
+        player = gkPlayer;
+      } else {
+        // 골키퍼가 아니면 랜덤 선수 사용
+        if (availablePlayers.length > 0) {
+          player = availablePlayers.shift()!;
+        } else {
+          // 선수가 부족하면 첫 번째 선수 재사용
+          player = shuffledPlayers[0];
+        }
+      }
+
+      return {
+        ...player,
+        position: t.pos,
+        x: t.x,
+        y: t.y,
+      };
+    });
+
+    // 벤치 선수는 그대로 유지
+    const benchPlayers = players.filter((p) => p.isBench);
+
+    setPlayers([...newPlayers, ...benchPlayers]);
+    showSuccess("선수들이 랜덤하게 배치되었습니다!");
+  }, [formation, players, gameType, showError, showSuccess]);
+
   // 선수 이름 변경
   const handleNameChange = useCallback((id: number, name: string): void => {
-    setPlayers((prev: Player[]) =>
-      prev.map((p: Player) => (p.id === id ? { ...p, name } : p))
-    );
+    setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)));
   }, []);
 
   // 선수 포지션 변경
@@ -412,8 +445,8 @@ const SquadBuilder: React.FC = () => {
       }
 
       const coords = getDefaultPositionCoordinates(position);
-      setPlayers((prev: Player[]) =>
-        prev.map((p: Player) =>
+      setPlayers((prev) =>
+        prev.map((p) =>
           p.id === id ? { ...p, position, x: coords.x, y: coords.y } : p
         )
       );
@@ -423,7 +456,7 @@ const SquadBuilder: React.FC = () => {
 
   // 선수 삭제
   const deletePlayer = useCallback((id: number): void => {
-    setPlayers((prev: Player[]) => prev.filter((p: Player) => p.id !== id));
+    setPlayers((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
   // 후보 선수 추가
@@ -436,7 +469,7 @@ const SquadBuilder: React.FC = () => {
       y: 15,
       isBench: true,
     };
-    setPlayers((prev: Player[]) => [...prev, newPlayer]);
+    setPlayers((prev) => [...prev, newPlayer]);
   }, [players]);
 
   // 후보/주전 전환
@@ -454,17 +487,16 @@ const SquadBuilder: React.FC = () => {
         }
       }
 
-      setPlayers((prev: Player[]) =>
-        prev.map((p: Player) => {
+      setPlayers((prev) =>
+        prev.map((p) => {
           if (p.id === id) {
-            if (!p.isBench) {
-              // 주전 -> 후보
-              return { ...p, isBench: true };
-            } else {
-              // 후보 -> 주전: 기본 좌표로 배치
-              const coords = getDefaultPositionCoordinates(p.position);
-              return { ...p, isBench: false, x: coords.x, y: coords.y };
-            }
+            return !p.isBench
+              ? { ...p, isBench: true }
+              : {
+                  ...p,
+                  isBench: false,
+                  ...getDefaultPositionCoordinates(p.position),
+                };
           }
           return p;
         })
@@ -516,101 +548,68 @@ const SquadBuilder: React.FC = () => {
     [gameType]
   );
 
-  // 드래그 중 (마우스) - requestAnimationFrame으로 throttling
+  // 드래그 중 위치 업데이트 (공통 로직)
+  const updatePlayerPosition = useCallback(
+    (clientX: number, clientY: number): void => {
+      if (!draggedPlayer || !fieldRef.current) return;
+
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+
+      animationFrameRef.current = requestAnimationFrame(() => {
+        const now = Date.now();
+        if (now - lastUpdateTimeRef.current < 16) return;
+        lastUpdateTimeRef.current = now;
+
+        const rect = fieldRef.current!.getBoundingClientRect();
+        const x = ((clientX - dragOffset.x - rect.left) / rect.width) * 100;
+        const y = ((clientY - dragOffset.y - rect.top) / rect.height) * 100;
+
+        const clampedX = Math.max(5, Math.min(95, x));
+        const clampedY = Math.max(5, Math.min(95, y));
+
+        const newPosition = getPositionByLocation(
+          clampedX,
+          clampedY,
+          players,
+          draggedPlayer,
+          showError,
+          gameType
+        );
+
+        setPlayers((prev) =>
+          prev.map((p) =>
+            p.id === draggedPlayer.id
+              ? { ...p, x: clampedX, y: clampedY, position: newPosition }
+              : p
+          )
+        );
+      });
+    },
+    [draggedPlayer, dragOffset, players, showError, gameType]
+  );
+
+  // 드래그 중 (마우스)
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>): void => {
-      if (!draggedPlayer || !fieldRef.current) return;
-
-      // 이전 프레임 취소
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-
-      // requestAnimationFrame으로 throttling (60fps)
-      animationFrameRef.current = requestAnimationFrame(() => {
-        const now = Date.now();
-        // 모바일에서는 16ms마다 업데이트 (60fps)
-        if (now - lastUpdateTimeRef.current < 16) return;
-        lastUpdateTimeRef.current = now;
-
-        const rect = fieldRef.current!.getBoundingClientRect();
-        const x = ((e.clientX - dragOffset.x - rect.left) / rect.width) * 100;
-        const y = ((e.clientY - dragOffset.y - rect.top) / rect.height) * 100;
-
-        const clampedX = Math.max(5, Math.min(95, x));
-        const clampedY = Math.max(5, Math.min(95, y));
-
-        const newPosition = getPositionByLocation(
-          clampedX,
-          clampedY,
-          players,
-          draggedPlayer,
-          showError,
-          gameType
-        );
-
-        setPlayers((prev: Player[]) =>
-          prev.map((p: Player) =>
-            p.id === draggedPlayer.id
-              ? { ...p, x: clampedX, y: clampedY, position: newPosition }
-              : p
-          )
-        );
-      });
+      updatePlayerPosition(e.clientX, e.clientY);
     },
-    [draggedPlayer, dragOffset, players, showError, gameType]
+    [updatePlayerPosition]
   );
 
-  // 드래그 중 (터치) - requestAnimationFrame으로 throttling
+  // 드래그 중 (터치)
   const handleTouchMove = useCallback(
     (e: React.TouchEvent<HTMLDivElement>): void => {
-      if (!draggedPlayer || !fieldRef.current) return;
-
-      // 이전 프레임 취소
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+      if (e.touches[0]) {
+        updatePlayerPosition(e.touches[0].clientX, e.touches[0].clientY);
       }
-
-      // requestAnimationFrame으로 throttling (60fps)
-      animationFrameRef.current = requestAnimationFrame(() => {
-        const now = Date.now();
-        // 모바일에서는 16ms마다 업데이트 (60fps)
-        if (now - lastUpdateTimeRef.current < 16) return;
-        lastUpdateTimeRef.current = now;
-
-        const rect = fieldRef.current!.getBoundingClientRect();
-        const touch = e.touches[0];
-        const x =
-          ((touch.clientX - dragOffset.x - rect.left) / rect.width) * 100;
-        const y =
-          ((touch.clientY - dragOffset.y - rect.top) / rect.height) * 100;
-
-        const clampedX = Math.max(5, Math.min(95, x));
-        const clampedY = Math.max(5, Math.min(95, y));
-
-        const newPosition = getPositionByLocation(
-          clampedX,
-          clampedY,
-          players,
-          draggedPlayer,
-          showError,
-          gameType
-        );
-
-        setPlayers((prev: Player[]) =>
-          prev.map((p: Player) =>
-            p.id === draggedPlayer.id
-              ? { ...p, x: clampedX, y: clampedY, position: newPosition }
-              : p
-          )
-        );
-      });
     },
-    [draggedPlayer, dragOffset, players, showError, gameType]
+    [updatePlayerPosition]
   );
 
-  // 드래그 종료
-  const handleMouseUp = useCallback((): void => {
+  // 드래그 종료 (공통)
+  const handleDragEnd = useCallback((): void => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
@@ -618,13 +617,8 @@ const SquadBuilder: React.FC = () => {
     setDraggedPlayer(null);
   }, []);
 
-  const handleTouchEnd = useCallback((): void => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-    setDraggedPlayer(null);
-  }, []);
+  const handleMouseUp = handleDragEnd;
+  const handleTouchEnd = handleDragEnd;
 
   // 섹션 토글
   const toggleSection = useCallback((category: string): void => {
@@ -637,46 +631,27 @@ const SquadBuilder: React.FC = () => {
   // 스쿼드 불러오기
   const handleLoadSquad = useCallback(
     (squad: SquadData): void => {
-      console.log("불러온 스쿼드 데이터:", squad);
-      console.log("불러온 선수 데이터:", squad.players);
-      console.log(
-        "선수 이름 확인:",
-        squad.players?.map((p) => ({
-          id: p.id,
-          name: p.name,
-          position: p.position,
-        }))
-      );
-
-      // 저장된 게임 타입이 있으면 해당 게임 타입으로 전환
-      // 없으면 선수 수로 판단 (풋살은 최대 7명)
+      // 저장된 게임 타입이 있으면 해당 게임 타입으로 전환, 없으면 선수 수로 판단
       let targetGameType: GameType = squad.gameType || "football";
       if (!squad.gameType) {
         const mainPlayersCount = squad.players.filter((p) => !p.isBench).length;
         targetGameType = mainPlayersCount <= 7 ? "futsal" : "football";
       }
 
-      // 스쿼드 로딩 중 플래그 설정
       isLoadingSquadRef.current = true;
-      hasInitializedRef.current = true; // 스쿼드 로드 시 초기화 플래그 설정
-
-      // 현재 로드된 스쿼드 ID 저장
+      hasInitializedRef.current = true;
       setCurrentSquadId(squad.id || null);
-
-      // 로드된 스쿼드 원본 저장 (깊은 복사)
       loadedSquadRef.current = {
         ...squad,
         players: squad.players.map((p) => ({ ...p })),
       };
 
-      // gameType을 먼저 변경하고, 그 다음 formation과 players를 설정
       if (targetGameType !== gameType) {
         setGameType(targetGameType);
       }
       setFormation(squad.formation);
       setPlayers(squad.players);
 
-      // 다음 렌더링 사이클에서 플래그 해제
       setTimeout(() => {
         isLoadingSquadRef.current = false;
       }, 0);
@@ -770,18 +745,20 @@ const SquadBuilder: React.FC = () => {
     }
   }, [gameType, formation, showError, showSuccess]);
 
-  // 주전 선수만 필터링
-  const mainPlayers = players.filter((p: Player) => !p.isBench);
-
-  // 포지션별 선수 그룹화 (주전만)
-  const groupedPlayers: GroupedPlayers = Object.keys(
-    POSITION_CATEGORIES
-  ).reduce((acc, category) => {
-    acc[category] = mainPlayers.filter((p: Player) =>
-      POSITION_CATEGORIES[category].positions.includes(p.position)
+  // 주전 선수 및 포지션별 그룹화 (메모이제이션)
+  const { mainPlayers, groupedPlayers } = useMemo(() => {
+    const main = players.filter((p) => !p.isBench);
+    const grouped: GroupedPlayers = Object.keys(POSITION_CATEGORIES).reduce(
+      (acc, category) => {
+        acc[category] = main.filter((p) =>
+          POSITION_CATEGORIES[category].positions.includes(p.position)
+        );
+        return acc;
+      },
+      {} as GroupedPlayers
     );
-    return acc;
-  }, {} as GroupedPlayers);
+    return { mainPlayers: main, groupedPlayers: grouped };
+  }, [players]);
 
   return (
     <div
@@ -959,6 +936,7 @@ const SquadBuilder: React.FC = () => {
             formation={formation}
             formations={availableFormations}
             onFormationChange={loadFormation}
+            onRandomize={handleRandomize}
           />
           <SaveLoadPanel
             currentFormation={formation}
