@@ -159,7 +159,7 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
 
     const teamEntries = Object.entries(teams);
     const hasMultipleTeams = teamEntries.length > 1;
-    const showCarousel = isMobile && hasMultipleTeams;
+    const showCarousel = hasMultipleTeams; // 모바일/데스크톱 모두 캐러셀 표시
 
     // 현재 표시할 선수들
     const currentPlayers = useMemo(() => {
@@ -169,7 +169,7 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
       return players; // 데스크톱이거나 팀이 1개 이하일 때는 모든 선수 표시
     }, [showCarousel, teamEntries, currentTeamIndex, players]);
 
-    // 스와이프 처리
+    // 스와이프/드래그 처리
     const handleTouchStart = (e: React.TouchEvent) => {
       touchStartX.current = e.touches[0].clientX;
     };
@@ -183,15 +183,48 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
       const distance = touchStartX.current - touchEndX.current;
       const minSwipeDistance = 50;
 
-      if (
-        distance > minSwipeDistance &&
-        currentTeamIndex < teamEntries.length - 1
-      ) {
-        // 왼쪽으로 스와이프 (다음 팀)
-        setCurrentTeamIndex((prev) => prev + 1);
-      } else if (distance < -minSwipeDistance && currentTeamIndex > 0) {
-        // 오른쪽으로 스와이프 (이전 팀)
-        setCurrentTeamIndex((prev) => prev - 1);
+      if (distance > minSwipeDistance) {
+        // 왼쪽으로 스와이프 (다음 팀, 마지막이면 첫 번째로)
+        setCurrentTeamIndex((prev) => (prev + 1) % teamEntries.length);
+      } else if (distance < -minSwipeDistance) {
+        // 오른쪽으로 스와이프 (이전 팀, 첫 번째면 마지막으로)
+        setCurrentTeamIndex(
+          (prev) => (prev - 1 + teamEntries.length) % teamEntries.length
+        );
+      }
+      touchStartX.current = 0;
+      touchEndX.current = 0;
+    };
+
+    // 마우스 드래그 처리 (데스크톱)
+    const handleMouseDown = (e: React.MouseEvent) => {
+      if (!showCarousel) return;
+      touchStartX.current = e.clientX;
+      e.preventDefault();
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+      if (!showCarousel || touchStartX.current === 0) return;
+      touchEndX.current = e.clientX;
+    };
+
+    const handleMouseUp = () => {
+      if (!showCarousel || !touchStartX.current || !touchEndX.current) {
+        touchStartX.current = 0;
+        touchEndX.current = 0;
+        return;
+      }
+      const distance = touchStartX.current - touchEndX.current;
+      const minSwipeDistance = 50;
+
+      if (distance > minSwipeDistance) {
+        // 왼쪽으로 드래그 (다음 팀, 마지막이면 첫 번째로)
+        setCurrentTeamIndex((prev) => (prev + 1) % teamEntries.length);
+      } else if (distance < -minSwipeDistance) {
+        // 오른쪽으로 드래그 (이전 팀, 첫 번째면 마지막으로)
+        setCurrentTeamIndex(
+          (prev) => (prev - 1 + teamEntries.length) % teamEntries.length
+        );
       }
       touchStartX.current = 0;
       touchEndX.current = 0;
@@ -199,15 +232,16 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
 
     return (
       <div className="relative">
-        {/* 팀 네비게이션 (모바일에서만 표시) */}
+        {/* 팀 네비게이션 (여러 팀이 있을 때 표시) */}
         {showCarousel && (
           <div className="flex items-center justify-between mb-3 px-2">
             <button
               onClick={() =>
-                setCurrentTeamIndex((prev) => (prev > 0 ? prev - 1 : prev))
+                setCurrentTeamIndex(
+                  (prev) => (prev - 1 + teamEntries.length) % teamEntries.length
+                )
               }
-              disabled={currentTeamIndex === 0}
-              className="p-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded text-white transition"
+              className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition"
             >
               <ChevronLeft size={20} />
             </button>
@@ -229,12 +263,9 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
             </div>
             <button
               onClick={() =>
-                setCurrentTeamIndex((prev) =>
-                  prev < teamEntries.length - 1 ? prev + 1 : prev
-                )
+                setCurrentTeamIndex((prev) => (prev + 1) % teamEntries.length)
               }
-              disabled={currentTeamIndex === teamEntries.length - 1}
-              className="p-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded text-white transition"
+              className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition"
             >
               <ChevronRight size={20} />
             </button>
@@ -254,10 +285,15 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
             boxSizing: "border-box",
             overflow: "visible", // 골키퍼가 잘리지 않도록
             position: "relative",
+            cursor: showCarousel ? "grab" : "default",
           }}
           onTouchStart={showCarousel ? handleTouchStart : undefined}
           onTouchMove={showCarousel ? handleTouchMove : undefined}
           onTouchEnd={showCarousel ? handleTouchEnd : undefined}
+          onMouseDown={showCarousel ? handleMouseDown : undefined}
+          onMouseMove={showCarousel ? handleMouseMove : undefined}
+          onMouseUp={showCarousel ? handleMouseUp : undefined}
+          onMouseLeave={showCarousel ? handleMouseUp : undefined}
         >
           {/* 필드 내부 컨테이너 (패딩 영역 - 골키퍼 잘림 방지) */}
           <div

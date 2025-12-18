@@ -33,14 +33,19 @@ const RandomizeModal: React.FC<RandomizeModalProps> = ({
   // 모달이 열릴 때마다 초기화
   useEffect(() => {
     if (isOpen) {
-      setPlayerNames([""]);
       setNumTeams(2);
-      setPlayersPerTeam(Math.min(template.length, 7));
+      const initialPlayersPerTeam = Math.min(template.length, 7);
+      setPlayersPerTeam(initialPlayersPerTeam);
+      // 초기 필드 수 설정 (2팀 × 7명 = 14명)
+      const initialTotal = 2 * initialPlayersPerTeam;
+      setPlayerNames(Array(initialTotal).fill(""));
     }
   }, [isOpen, template.length]);
 
   // 팀 수와 인원 수에 따라 입력 필드 자동 조정
   useEffect(() => {
+    if (!isOpen) return; // 모달이 닫혀있으면 실행하지 않음
+
     const totalNeeded = numTeams * playersPerTeam;
     const currentCount = playerNames.length;
 
@@ -68,7 +73,7 @@ const RandomizeModal: React.FC<RandomizeModalProps> = ({
         return newNames;
       });
     }
-  }, [numTeams, playersPerTeam]);
+  }, [numTeams, playersPerTeam, isOpen]);
 
   // 모달이 열려있을 때 배경 스크롤 방지
   useEffect(() => {
@@ -160,31 +165,12 @@ const RandomizeModal: React.FC<RandomizeModalProps> = ({
       );
 
       // 포메이션 템플릿에 맞게 배치 (팀당 인원 수만큼만)
+      // 모든 팀은 같은 포메이션 좌표 사용 (모바일에서 팀별로 필드가 표시되므로)
       const teamPlayers = template.slice(0, playersPerTeam).map((t, index) => {
-        // 팀 위치에 따라 x 좌표 조정
-        // 첫 번째 팀: 왼쪽 (원래 좌표)
-        // 두 번째 팀: 오른쪽 (x 좌표 반전)
-        // 세 번째 팀 이상: 중앙 또는 다른 위치
-        let x = t.x;
-        if (numTeams === 2) {
-          if (teamIndex === 1) {
-            x = 100 - t.x; // 오른쪽 필드
-          }
-        } else if (numTeams === 3) {
-          if (teamIndex === 1) {
-            x = 50; // 중앙
-          } else if (teamIndex === 2) {
-            x = 100 - t.x; // 오른쪽
-          }
-        } else {
-          // 4팀 이상일 경우 간단하게 배치
-          x = 25 + (teamIndex % 2) * 50 + (t.x - 50) * 0.3;
-        }
-
         return {
           name: teamNames[index] || `선수 ${index + 1}`,
           position: t.pos,
-          x: Math.max(0, Math.min(100, x)), // 0-100 범위 제한
+          x: t.x, // 원래 포메이션 좌표 사용
           y: t.y,
         };
       });
