@@ -291,7 +291,7 @@ export const POSITION_CATEGORIES: PositionCategories = {
     positions: ["LWB", "LB", "LCB", "CB", "RCB", "RB", "RWB", "DF"],
   },
   DM: { name: "수비형 미드필더", positions: ["LDM", "CDM", "RDM"] },
-  CM: { name: "중앙 미드필더", positions: ["LCM", "CM", "RCM", "MF"] },
+  CM: { name: "미드필더", positions: ["LCM", "CM", "RCM", "MF"] },
   AM: { name: "공격형 미드필더", positions: ["LM", "LAM", "CAM", "RAM", "RM"] },
   FW: {
     name: "공격수",

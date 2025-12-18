@@ -402,3 +402,87 @@ export async function deleteSquad(id: number): Promise<void> {
     throw error;
   }
 }
+
+// 로컬 스토리지 관련 함수들 (비계정 모드용)
+const LOCAL_STORAGE_KEY = "football_squads";
+
+export function getAllLocalSquads(): SquadData[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const data = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (!data) return [];
+    return JSON.parse(data);
+  } catch (error) {
+    console.error("로컬 스토리지 읽기 오류:", error);
+    return [];
+  }
+}
+
+export function saveLocalSquad(
+  squad: Omit<SquadData, "id" | "createdAt" | "updatedAt">
+): SquadData {
+  if (typeof window === "undefined") {
+    throw new Error("브라우저 환경에서만 사용 가능합니다.");
+  }
+
+  try {
+    const squads = getAllLocalSquads();
+    const newSquad: SquadData = {
+      ...squad,
+      id: Date.now(), // 간단한 ID 생성
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    squads.push(newSquad);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(squads));
+    return newSquad;
+  } catch (error) {
+    console.error("로컬 스토리지 저장 오류:", error);
+    throw new Error("스쿼드 저장에 실패했습니다.");
+  }
+}
+
+export function updateLocalSquad(
+  id: number,
+  data: Partial<SquadData>
+): SquadData {
+  if (typeof window === "undefined") {
+    throw new Error("브라우저 환경에서만 사용 가능합니다.");
+  }
+
+  try {
+    const squads = getAllLocalSquads();
+    const index = squads.findIndex((s) => s.id === id);
+    if (index === -1) {
+      throw new Error("스쿼드를 찾을 수 없습니다.");
+    }
+
+    const updatedSquad: SquadData = {
+      ...squads[index],
+      ...data,
+      id,
+      updatedAt: new Date().toISOString(),
+    };
+    squads[index] = updatedSquad;
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(squads));
+    return updatedSquad;
+  } catch (error) {
+    console.error("로컬 스토리지 업데이트 오류:", error);
+    throw error;
+  }
+}
+
+export function deleteLocalSquad(id: number): void {
+  if (typeof window === "undefined") {
+    throw new Error("브라우저 환경에서만 사용 가능합니다.");
+  }
+
+  try {
+    const squads = getAllLocalSquads();
+    const filtered = squads.filter((s) => s.id !== id);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(filtered));
+  } catch (error) {
+    console.error("로컬 스토리지 삭제 오류:", error);
+    throw error;
+  }
+}

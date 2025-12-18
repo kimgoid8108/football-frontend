@@ -47,12 +47,15 @@ export const getPositionByLocation = (
   gameType: GameType = "football"
 ): string => {
   if (y > 82) {
-    const hasGK = players.some(
-      (p) => p.position === "GK" && p.id !== draggedPlayer?.id
-    );
-    if (hasGK) {
-      showError("골키퍼는 한 명만 가능합니다!");
-      return draggedPlayer?.position || (gameType === "futsal" ? "FW" : "ST");
+    // 축구일 때만 골키퍼 제한 적용 (풋살은 자유롭게 교체 가능)
+    if (gameType === "football") {
+      const hasGK = players.some(
+        (p) => p.position === "GK" && p.id !== draggedPlayer?.id
+      );
+      if (hasGK) {
+        showError("골키퍼는 한 명만 가능합니다!");
+        return draggedPlayer?.position || "ST";
+      }
     }
     return "GK";
   }

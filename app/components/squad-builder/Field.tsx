@@ -205,6 +205,7 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
               isDragging={draggedPlayerId === player.id}
               onMouseDown={onPlayerMouseDown}
               onTouchStart={onPlayerTouchStart}
+              gameType={gameType}
             />
           ))}
         </div>

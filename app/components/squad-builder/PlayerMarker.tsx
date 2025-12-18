@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Player, Coordinates } from "../../types/squad-builder";
+import { Player, Coordinates, GameType } from "../../types/squad-builder";
 import { getPositionColor } from "../../utils/squad-builder";
 
 interface PlayerMarkerProps {
@@ -7,11 +7,20 @@ interface PlayerMarkerProps {
   isDragging: boolean;
   onMouseDown: (e: React.MouseEvent<HTMLDivElement>, player: Player) => void;
   onTouchStart: (e: React.TouchEvent<HTMLDivElement>, player: Player) => void;
+  gameType?: GameType;
 }
 
 const PlayerMarker: React.FC<PlayerMarkerProps> = React.memo(
-  ({ player, isDragging, onMouseDown, onTouchStart }) => {
+  ({
+    player,
+    isDragging,
+    onMouseDown,
+    onTouchStart,
+    gameType = "football",
+  }) => {
     const isGK = player.position === "GK";
+    // 풋살일 때는 골키퍼도 드래그 가능하도록 설정
+    const isGKDraggable = isGK && gameType === "futsal";
     const color = useMemo(
       () => getPositionColor(player.position),
       [player.position]
@@ -31,6 +40,9 @@ const PlayerMarker: React.FC<PlayerMarkerProps> = React.memo(
       >
         {/* 완전한 원형 마커 - 최소 48px 터치 영역, 데스크톱에서는 더 크게 */}
         <div
+          data-draggable="true"
+          data-position={player.position}
+          data-player-id={player.id}
           className="rounded-full shadow-lg flex items-center justify-center relative touch-none"
           style={{
             width: "clamp(48px, 12vw, 64px)", // 모바일 48px, 데스크톱 최대 64px
@@ -39,8 +51,16 @@ const PlayerMarker: React.FC<PlayerMarkerProps> = React.memo(
             background: `radial-gradient(circle at 30% 30%, ${color}, ${color}dd)`,
             border: "2px solid white",
             boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
-            cursor: isGK ? "not-allowed" : isDragging ? "grabbing" : "grab",
-            opacity: isGK ? 0.8 : 1,
+            cursor: isGKDraggable
+              ? isDragging
+                ? "grabbing"
+                : "grab"
+              : isGK
+              ? "not-allowed"
+              : isDragging
+              ? "grabbing"
+              : "grab",
+            opacity: isGKDraggable ? 1 : isGK ? 0.8 : 1,
             pointerEvents: "auto",
             willChange: isDragging ? "transform" : "auto",
             borderRadius: "50%", // 완전한 원형 보장
@@ -48,7 +68,6 @@ const PlayerMarker: React.FC<PlayerMarkerProps> = React.memo(
             minHeight: "48px",
           }}
           onMouseDown={(e) => onMouseDown(e, player)}
-          onTouchStart={(e) => onTouchStart(e, player)}
         >
           {/* 그라데이션 오버레이 */}
           <div
@@ -103,14 +122,15 @@ const PlayerMarker: React.FC<PlayerMarkerProps> = React.memo(
     );
   },
   (prevProps, nextProps) => {
-    // 커스텀 비교 함수: player의 id, x, y, position, name, isDragging 비교
+    // 커스텀 비교 함수: player의 id, x, y, position, name, isDragging, gameType 비교
     return (
       prevProps.player.id === nextProps.player.id &&
       prevProps.player.x === nextProps.player.x &&
       prevProps.player.y === nextProps.player.y &&
       prevProps.player.position === nextProps.player.position &&
       prevProps.player.name === nextProps.player.name &&
-      prevProps.isDragging === nextProps.isDragging
+      prevProps.isDragging === nextProps.isDragging &&
+      prevProps.gameType === nextProps.gameType
     );
   }
 );

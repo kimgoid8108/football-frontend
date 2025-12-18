@@ -27,7 +27,7 @@ import {
   PlayerList,
   SaveLoadPanel,
 } from "./components/squad-builder";
-import { SquadData } from "./utils/api";
+import { SquadData, getToken, createSquad, saveLocalSquad } from "./utils/api";
 import { useAuth } from "./contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
@@ -46,10 +46,14 @@ const SquadBuilder: React.FC = () => {
     {}
   );
   const [currentSquadId, setCurrentSquadId] = useState<number | null>(null);
+  const [pendingGameType, setPendingGameType] = useState<GameType | null>(null);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const fieldRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastUpdateTimeRef = useRef<number>(0);
   const isLoadingSquadRef = useRef<boolean>(false);
+  const hasInitializedRef = useRef<boolean>(false);
+  const playersRef = useRef<Player[]>([]);
 
   const handleLogout = () => {
     logout();
@@ -96,6 +100,35 @@ const SquadBuilder: React.FC = () => {
     }
   }, [gameType, availableFormations, formation]);
 
+  // 초기 로드 시 포메이션에 맞게 선수 자동 로드
+  useEffect(() => {
+    if (
+      !isLoadingSquadRef.current &&
+      !hasInitializedRef.current &&
+      players.length === 0 &&
+      !currentSquadId && // 스쿼드가 로드된 상태가 아닐 때만
+      formation &&
+      FORMATIONS[formation]
+    ) {
+      const template = FORMATIONS[formation];
+      const usedNames: string[] = [];
+
+      const newPlayers: Player[] = template.map((t, i) => {
+        const name = getRandomName([]);
+        usedNames.push(name);
+        return {
+          id: Date.now() + i,
+          name,
+          position: t.pos,
+          x: t.x,
+          y: t.y,
+        };
+      });
+      setPlayers(newPlayers);
+      hasInitializedRef.current = true;
+    }
+  }, [formation]); // formation이 변경될 때만 실행
+
   // 컴포넌트 언마운트 시 animationFrame 정리
   useEffect(() => {
     return () => {
@@ -105,11 +138,97 @@ const SquadBuilder: React.FC = () => {
     };
   }, []);
 
+  // players ref 업데이트
+  useEffect(() => {
+    playersRef.current = players;
+  }, [players]);
+
+  // 모바일 터치 이벤트를 non-passive로 등록하여 preventDefault 가능하게 함
+  useEffect(() => {
+    const fieldElement = fieldRef.current;
+    if (!fieldElement) return;
+
+    const handleTouchMoveNative = (e: TouchEvent) => {
+      if (!draggedPlayer) return;
+      e.preventDefault(); // non-passive 리스너이므로 preventDefault 가능
+    };
+
+    const handleTouchStartNative = (e: TouchEvent) => {
+      // 드래그 가능한 요소에서 터치가 시작된 경우에만 preventDefault
+      const target = e.target as HTMLElement;
+      const draggableElement = target.closest('[data-draggable="true"]');
+      if (draggableElement) {
+        // 골키퍼 체크 (축구 모드일 때만)
+        const isGK = draggableElement.getAttribute("data-position") === "GK";
+        if (!isGK || gameType === "futsal") {
+          e.preventDefault(); // non-passive 리스너이므로 preventDefault 가능
+          e.stopPropagation(); // React 이벤트 핸들러가 실행되지 않도록
+
+          // player 정보를 가져와서 드래그 시작 처리
+          const playerId = draggableElement.getAttribute("data-player-id");
+          if (playerId) {
+            // ref를 통해 최신 players 값 사용
+            const player = playersRef.current.find(
+              (p) => p.id === Number(playerId)
+            );
+            if (player) {
+              const rect = draggableElement.getBoundingClientRect();
+              const touch = e.touches[0];
+              setDragOffset({
+                x: touch.clientX - rect.left - rect.width / 2,
+                y: touch.clientY - rect.top - rect.height / 2,
+              });
+              setDraggedPlayer(player);
+            }
+          }
+        }
+      }
+    };
+
+    // capture phase에서 non-passive 옵션으로 터치 이벤트 리스너 추가
+    // capture phase에서 실행하여 React 이벤트 핸들러보다 먼저 실행되도록 함
+    fieldElement.addEventListener("touchmove", handleTouchMoveNative, {
+      passive: false,
+    });
+    fieldElement.addEventListener("touchstart", handleTouchStartNative, {
+      passive: false,
+      capture: true, // capture phase에서 실행
+    });
+
+    return () => {
+      fieldElement.removeEventListener("touchmove", handleTouchMoveNative);
+      fieldElement.removeEventListener("touchstart", handleTouchStartNative, {
+        capture: true,
+      });
+    };
+  }, [draggedPlayer, gameType]);
+
   // 게임 타입 변경 핸들러
-  const handleGameTypeChange = useCallback((newGameType: GameType): void => {
+  const handleGameTypeChange = useCallback(
+    (newGameType: GameType): void => {
+      // 현재 게임 타입과 같으면 변경하지 않음
+      if (newGameType === gameType) return;
+
+      // 선수가 있고 변경사항이 있으면 저장 확인
+      const mainPlayers = players.filter((p) => !p.isBench);
+      if (mainPlayers.length > 0) {
+        setPendingGameType(newGameType);
+        setShowSaveConfirm(true);
+        return;
+      }
+
+      // 선수가 없으면 바로 변경
+      proceedGameTypeChange(newGameType);
+    },
+    [gameType, players]
+  );
+
+  // 게임 타입 변경 실행
+  const proceedGameTypeChange = useCallback((newGameType: GameType): void => {
     setGameType(newGameType);
     setPlayers([]); // 게임 타입 변경 시 선수 초기화
     setCurrentSquadId(null); // 게임 타입 변경 시 현재 스쿼드 ID 초기화
+    hasInitializedRef.current = false; // 초기화 플래그 리셋
     // 기본 포메이션 설정
     if (newGameType === "football") {
       setFormation("4-3-3");
@@ -117,6 +236,54 @@ const SquadBuilder: React.FC = () => {
       setFormation("5인 1-2-1");
     }
   }, []);
+
+  // 현재 스쿼드 저장 후 게임 타입 변경
+  const handleSaveAndChangeGameType = useCallback(async (): Promise<void> => {
+    if (!pendingGameType) return;
+
+    const mainPlayers = players.filter((p) => !p.isBench);
+    if (mainPlayers.length === 0) {
+      proceedGameTypeChange(pendingGameType);
+      setShowSaveConfirm(false);
+      setPendingGameType(null);
+      return;
+    }
+
+    try {
+      const isGuestMode = !getToken();
+      const squadData = {
+        name: `${
+          gameType === "football" ? "축구" : "풋살"
+        } 스쿼드 ${new Date().toLocaleString("ko-KR")}`,
+        formation,
+        players,
+        gameType,
+      };
+
+      if (isGuestMode) {
+        saveLocalSquad(squadData);
+        showSuccess("스쿼드가 저장되었습니다!");
+      } else {
+        await createSquad(squadData);
+        showSuccess("스쿼드가 저장되었습니다!");
+      }
+
+      proceedGameTypeChange(pendingGameType);
+      setShowSaveConfirm(false);
+      setPendingGameType(null);
+    } catch (error) {
+      console.error("스쿼드 저장 에러:", error);
+      showError("스쿼드 저장에 실패했습니다.");
+    }
+  }, [pendingGameType, players, formation, gameType, showSuccess, showError]);
+
+  // 저장하지 않고 게임 타입 변경
+  const handleSkipSaveAndChangeGameType = useCallback((): void => {
+    if (!pendingGameType) return;
+    proceedGameTypeChange(pendingGameType);
+    setShowSaveConfirm(false);
+    setPendingGameType(null);
+  }, [pendingGameType, proceedGameTypeChange]);
 
   // 포메이션 로드
   const loadFormation = useCallback(
@@ -154,7 +321,8 @@ const SquadBuilder: React.FC = () => {
   // 선수 포지션 변경
   const handlePositionChange = useCallback(
     (id: number, position: string): void => {
-      if (position === "GK") {
+      // 축구일 때만 골키퍼 제한 적용 (풋살은 자유롭게 교체 가능)
+      if (position === "GK" && gameType === "football") {
         const hasGK = players.some(
           (p: Player) => p.position === "GK" && p.id !== id
         );
@@ -171,7 +339,7 @@ const SquadBuilder: React.FC = () => {
         )
       );
     },
-    [players, showError]
+    [players, showError, gameType]
   );
 
   // 선수 삭제
@@ -229,7 +397,8 @@ const SquadBuilder: React.FC = () => {
   // 드래그 시작 (마우스)
   const handleBallMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>, player: Player): void => {
-      if (player.position === "GK") return;
+      // 축구일 때만 골키퍼 드래그 제한 (풋살은 자유롭게 드래그 가능)
+      if (player.position === "GK" && gameType === "football") return;
 
       e.preventDefault();
       e.stopPropagation();
@@ -243,15 +412,16 @@ const SquadBuilder: React.FC = () => {
       });
       setDraggedPlayer(player);
     },
-    []
+    [gameType]
   );
 
   // 드래그 시작 (터치)
   const handleBallTouchStart = useCallback(
     (e: React.TouchEvent<HTMLDivElement>, player: Player): void => {
-      if (player.position === "GK") return;
+      // 축구일 때만 골키퍼 드래그 제한 (풋살은 자유롭게 드래그 가능)
+      if (player.position === "GK" && gameType === "football") return;
 
-      e.preventDefault();
+      // preventDefault는 native 이벤트 리스너에서 처리됨
       e.stopPropagation();
 
       const ball = e.currentTarget;
@@ -264,7 +434,7 @@ const SquadBuilder: React.FC = () => {
       });
       setDraggedPlayer(player);
     },
-    []
+    [gameType]
   );
 
   // 드래그 중 (마우스) - requestAnimationFrame으로 throttling
@@ -316,8 +486,6 @@ const SquadBuilder: React.FC = () => {
   const handleTouchMove = useCallback(
     (e: React.TouchEvent<HTMLDivElement>): void => {
       if (!draggedPlayer || !fieldRef.current) return;
-
-      e.preventDefault();
 
       // 이전 프레임 취소
       if (animationFrameRef.current) {
@@ -411,6 +579,7 @@ const SquadBuilder: React.FC = () => {
 
       // 스쿼드 로딩 중 플래그 설정
       isLoadingSquadRef.current = true;
+      hasInitializedRef.current = true; // 스쿼드 로드 시 초기화 플래그 설정
 
       // 현재 로드된 스쿼드 ID 저장
       setCurrentSquadId(squad.id || null);
@@ -543,6 +712,7 @@ const SquadBuilder: React.FC = () => {
         width: "100%",
         maxWidth: "100vw",
         boxSizing: "border-box",
+        touchAction: draggedPlayer ? "none" : "auto", // 드래그 중일 때 터치 동작 비활성화
       }}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -558,21 +728,43 @@ const SquadBuilder: React.FC = () => {
         </div>
       )}
 
-      {/* 사용자 정보 및 로그아웃 버튼 */}
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
-        {user && (
-          <div className="bg-gray-800/90 backdrop-blur-sm text-white px-4 py-2 rounded-lg border border-gray-700 text-sm">
-            👤 {user.name}
+      {/* 게임 타입 변경 시 저장 확인 모달 */}
+      {showSaveConfirm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl w-full max-w-md shadow-2xl border border-gray-700 p-6">
+            <h2 className="text-xl font-bold text-white mb-4">
+              현재 스쿼드를 저장하시겠습니까?
+            </h2>
+            <p className="text-gray-300 mb-6">
+              게임 타입을 변경하면 현재 스쿼드가 초기화됩니다. 저장하지 않으면
+              변경사항이 사라집니다.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleSaveAndChangeGameType}
+                className="flex-1 bg-green-600 hover:bg-green-500 text-white py-3 rounded-lg font-medium transition"
+              >
+                저장하고 변경
+              </button>
+              <button
+                onClick={handleSkipSaveAndChangeGameType}
+                className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-3 rounded-lg font-medium transition"
+              >
+                저장하지 않고 변경
+              </button>
+              <button
+                onClick={() => {
+                  setShowSaveConfirm(false);
+                  setPendingGameType(null);
+                }}
+                className="flex-1 bg-red-600 hover:bg-red-500 text-white py-3 rounded-lg font-medium transition"
+              >
+                취소
+              </button>
+            </div>
           </div>
-        )}
-        <button
-          onClick={handleLogout}
-          className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition font-medium text-sm"
-        >
-          <LogOut size={18} />
-          로그아웃
-        </button>
-      </div>
+        </div>
+      )}
 
       <div
         className="mx-auto"
@@ -584,6 +776,31 @@ const SquadBuilder: React.FC = () => {
           gap: "1.5rem",
         }}
       >
+        {/* 사용자 정보 및 로그인/로그아웃 버튼 */}
+        <div className="flex items-center gap-3 justify-end">
+          {user ? (
+            <>
+              <div className="bg-gray-800/90 backdrop-blur-sm text-white px-4 py-2 rounded-lg border border-gray-700 text-sm">
+                👤 {user.name}
+              </div>
+              <button
+                onClick={handleLogout}
+                className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition font-medium text-sm"
+              >
+                <LogOut size={18} />
+                로그아웃
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => router.push("/login")}
+              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition font-medium text-sm"
+            >
+              로그인
+            </button>
+          )}
+        </div>
+
         <h1
           className="text-white font-bold text-center"
           style={{
