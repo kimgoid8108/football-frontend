@@ -95,15 +95,20 @@ const SaveLoadPanel: React.FC<SaveLoadPanelProps> = ({
         }))
       );
 
+      let savedSquad: SquadData;
       if (isGuestMode) {
         // 비계정 모드: 로컬 스토리지에 저장
-        saveLocalSquad(squadData);
+        savedSquad = saveLocalSquad(squadData);
         onSuccess(`"${squadName}" 스쿼드가 로컬에 저장되었습니다!`);
       } else {
         // 계정 모드: API에 저장
-        await createSquad(squadData);
+        savedSquad = await createSquad(squadData);
         onSuccess(`"${squadName}" 스쿼드가 저장되었습니다!`);
       }
+
+      // 저장한 스쿼드를 다시 로드하여 loadedSquadRef 업데이트
+      onLoad(savedSquad);
+
       setSquadName("");
       loadSquads();
     } catch (error) {
@@ -135,15 +140,20 @@ const SaveLoadPanel: React.FC<SaveLoadPanelProps> = ({
       };
       console.log("업데이트할 스쿼드 데이터:", squadData);
 
+      let updatedSquad: SquadData;
       if (isGuestMode) {
         // 비계정 모드: 로컬 스토리지 업데이트
-        updateLocalSquad(currentSquadId, squadData);
+        updatedSquad = updateLocalSquad(currentSquadId, squadData);
         onSuccess("스쿼드가 업데이트되었습니다!");
       } else {
         // 계정 모드: API 업데이트
-        await updateSquad(currentSquadId, squadData);
+        updatedSquad = await updateSquad(currentSquadId, squadData);
         onSuccess("스쿼드가 업데이트되었습니다!");
       }
+
+      // 업데이트한 스쿼드를 다시 로드하여 loadedSquadRef 업데이트
+      onLoad(updatedSquad);
+
       loadSquads();
     } catch (error) {
       console.error("스쿼드 업데이트 에러:", error);
