@@ -359,33 +359,69 @@ const SquadBuilder: React.FC = () => {
 
   // 랜덤 배치 확인
   const handleRandomizeConfirm = useCallback(
-    (
+    async (
       teams: { name: string; position: string; x: number; y: number }[][]
-    ): void => {
+    ): Promise<void> => {
       if (!formation || !FORMATIONS[formation]) return;
 
       const benchPlayers = players.filter((p) => p.isBench);
+      const isGuestMode = !getToken();
 
-      // 모든 팀의 선수들을 하나의 배열로 합치기
+      // 모든 팀의 선수들을 하나의 배열로 합치기 (팀 이름 포함)
       let playerIdCounter = Date.now();
       const allPlayers: Player[] = [];
+      const savedTeamNames: string[] = [];
 
-      teams.forEach((team) => {
-        team.forEach((p) => {
-          allPlayers.push({
+      // 각 팀을 저장
+      for (let teamIndex = 0; teamIndex < teams.length; teamIndex++) {
+        const team = teams[teamIndex];
+        const teamName = `랜덤 팀 ${teamIndex + 1}`;
+        savedTeamNames.push(teamName);
+
+        // 팀 선수들 생성
+        const teamPlayers: Player[] = team.map((p) => {
+          const player: Player = {
             id: playerIdCounter++,
             name: p.name,
             position: p.position,
             x: p.x,
             y: p.y,
-          });
+            teamName: teamName, // 팀 이름 추가
+          };
+          allPlayers.push(player);
+          return player;
         });
-      });
+
+        // 각 팀을 별도의 스쿼드로 저장
+        try {
+          const squadData: SquadData = {
+            name: teamName,
+            formation: formation,
+            players: teamPlayers,
+            gameType: gameType,
+          };
+
+          if (isGuestMode) {
+            // 비계정 모드: 로컬 스토리지에 저장
+            saveLocalSquad(squadData);
+          } else {
+            // 계정 모드: API에 저장
+            await createSquad(squadData);
+          }
+        } catch (error) {
+          console.error(`팀 ${teamIndex + 1} 저장 실패:`, error);
+          // 저장 실패해도 계속 진행
+        }
+      }
 
       setPlayers([...allPlayers, ...benchPlayers]);
-      showSuccess(`${teams.length}개 팀이 배치되었습니다!`);
+      showSuccess(
+        `${teams.length}개 팀이 배치되고 저장되었습니다! (${savedTeamNames.join(
+          ", "
+        )})`
+      );
     },
-    [formation, players, showSuccess]
+    [formation, players, gameType, showSuccess]
   );
 
   // 선수 이름 변경

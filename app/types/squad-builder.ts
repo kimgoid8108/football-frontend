@@ -6,6 +6,7 @@ export interface Player {
   x: number;
   y: number;
   isBench?: boolean; // 후보 선수 여부
+  teamName?: string; // 팀 이름 (랜덤 배치 시 구분용)
 }
 
 // 포지션 인터페이스

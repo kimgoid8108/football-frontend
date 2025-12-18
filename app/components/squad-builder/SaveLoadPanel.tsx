@@ -65,6 +65,28 @@ const SaveLoadPanel: React.FC<SaveLoadPanelProps> = ({
     }
   }, [isOpen]);
 
+  // 모달이 열려있을 때 배경 스크롤 방지
+  useEffect(() => {
+    if (isOpen) {
+      // 현재 스크롤 위치 저장
+      const scrollY = window.scrollY;
+      // body 스크롤 방지
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = "100%";
+      document.body.style.overflow = "hidden";
+
+      return () => {
+        // 모달이 닫힐 때 원래대로 복원
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.width = "";
+        document.body.style.overflow = "";
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [isOpen]);
+
   // 스쿼드 저장
   const handleSave = async () => {
     if (!squadName.trim()) {

@@ -10,7 +10,7 @@ interface RandomizeModalProps {
   onClose: () => void;
   onConfirm: (
     teams: { name: string; position: string; x: number; y: number }[][]
-  ) => void;
+  ) => Promise<void>;
   formation: string;
   gameType: GameType;
   existingPlayers: { id: number; name: string; position: string }[];
@@ -39,17 +39,27 @@ const RandomizeModal: React.FC<RandomizeModalProps> = ({
     }
   }, [isOpen, template.length]);
 
-  // 사용 가능한 선수 이름 목록
-  const availableNames = useMemo(() => {
-    const allNames = [...PLAYER_NAMES.korean, ...PLAYER_NAMES.world];
-    const usedNames = playerNames.filter((n) => n.trim());
-    return allNames.filter((name) => !usedNames.includes(name));
-  }, [playerNames]);
+  // 모달이 열려있을 때 배경 스크롤 방지
+  useEffect(() => {
+    if (isOpen) {
+      // 현재 스크롤 위치 저장
+      const scrollY = window.scrollY;
+      // body 스크롤 방지
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = "100%";
+      document.body.style.overflow = "hidden";
 
-  // 기존 선수 이름 목록
-  const existingNames = useMemo(() => {
-    return existingPlayers.map((p) => p.name);
-  }, [existingPlayers]);
+      return () => {
+        // 모달이 닫힐 때 원래대로 복원
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.width = "";
+        document.body.style.overflow = "";
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [isOpen]);
 
   const handleNameChange = (index: number, name: string) => {
     setPlayerNames((prev) => {
@@ -68,6 +78,9 @@ const RandomizeModal: React.FC<RandomizeModalProps> = ({
   };
 
   const handleRandomFill = () => {
+    const allNames = [...PLAYER_NAMES.korean, ...PLAYER_NAMES.world];
+    const usedNames = playerNames.filter((n) => n.trim());
+    const availableNames = allNames.filter((name) => !usedNames.includes(name));
     const shuffledNames = [...availableNames].sort(() => Math.random() - 0.5);
     let nameIndex = 0;
 
@@ -85,7 +98,7 @@ const RandomizeModal: React.FC<RandomizeModalProps> = ({
     );
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     // 입력된 선수 이름들 필터링
     const validNames = playerNames.filter((name) => name.trim());
 
@@ -148,7 +161,7 @@ const RandomizeModal: React.FC<RandomizeModalProps> = ({
       teams.push(teamPlayers);
     }
 
-    onConfirm(teams);
+    await onConfirm(teams);
     onClose();
   };
 
@@ -247,17 +260,9 @@ const RandomizeModal: React.FC<RandomizeModalProps> = ({
                     value={name}
                     onChange={(e) => handleNameChange(index, e.target.value)}
                     placeholder="선수 이름 입력"
-                    list={`names-${index}`}
                     className="w-full bg-gray-600 text-white px-3 py-2 rounded border border-gray-500 focus:border-purple-500 focus:outline-none text-sm"
+                    style={{ fontSize: "16px" }}
                   />
-                  <datalist id={`names-${index}`}>
-                    {availableNames.map((n) => (
-                      <option key={n} value={n} />
-                    ))}
-                    {existingNames.map((n) => (
-                      <option key={n} value={n} />
-                    ))}
-                  </datalist>
                 </div>
                 <button
                   onClick={() => handleRemovePlayer(index)}
