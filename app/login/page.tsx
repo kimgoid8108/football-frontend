@@ -49,7 +49,13 @@ export default function LoginPage() {
       <div className="w-full max-w-md flex flex-col items-center gap-4">
         {/* 비계정 로그인 버튼 - 카드 바로 위 */}
         <button
-          onClick={() => router.push("/")}
+          onClick={() => {
+            // 비계정 모드 플래그 설정
+            if (typeof window !== "undefined") {
+              sessionStorage.setItem("guestMode", "true");
+            }
+            router.push("/");
+          }}
           className="text-white hover:text-blue-200 transition bg-blue-600 hover:bg-blue-500 backdrop-blur-sm px-4 py-2 rounded-lg border border-blue-500 shadow-lg self-start"
           title="비계정으로 사용하기"
         >
