@@ -3,11 +3,8 @@ import withPWA from "@ducanh2912/next-pwa";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  // webpack을 명시적으로 사용 (PWA 플러그인과 호환성)
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      // 클라이언트 사이드 webpack 설정
-    }
+  // webpack을 명시적으로 사용 (Turbopack 비활성화)
+  webpack: (config) => {
     return config;
   },
 };
