@@ -274,7 +274,7 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
 
         <div
           ref={ref}
-          className="relative bg-green-700 rounded-lg shadow-2xl max-w-[393px] md:max-w-[600px]"
+          className="relative bg-green-700 rounded-lg shadow-2xl max-w-[393px] md:max-w-[600px] mx-auto"
           style={{
             backgroundImage:
               "linear-gradient(0deg, #15803d 0%, #15803d 50%, #166534 50%, #166534 100%)",

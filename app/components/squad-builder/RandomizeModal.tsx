@@ -164,13 +164,54 @@ const RandomizeModal: React.FC<RandomizeModalProps> = ({
         (teamIndex + 1) * playersPerTeam
       );
 
-      // 포메이션 템플릿에 맞게 배치 (팀당 인원 수만큼만)
-      // 모든 팀은 같은 포메이션 좌표 사용 (모바일에서 팀별로 필드가 표시되므로)
-      const teamPlayers = template.slice(0, playersPerTeam).map((t, index) => {
+      // 팀당 인원 수에 맞는 포메이션 찾기
+      let teamTemplate = template;
+      if (template.length !== playersPerTeam) {
+        // 현재 포메이션과 인원 수가 다르면 적합한 포메이션 찾기
+        const matchingFormation = Object.entries(FORMATIONS).find(
+          ([key, positions]) => {
+            if (gameType === "futsal") {
+              // 풋살: 인원 수가 정확히 일치하는 포메이션
+              return key.includes("인") && positions.length === playersPerTeam;
+            } else {
+              // 축구: 인원 수가 정확히 일치하는 포메이션
+              return !key.includes("인") && positions.length === playersPerTeam;
+            }
+          }
+        );
+
+        if (matchingFormation) {
+          teamTemplate = matchingFormation[1];
+        } else {
+          // 정확히 일치하는 포메이션이 없으면 현재 포메이션을 기반으로 동적 생성
+          if (template.length < playersPerTeam) {
+            // 부족한 선수는 적절한 위치에 추가
+            const lastPos = template[template.length - 1];
+            const additional = playersPerTeam - template.length;
+            const additionalPositions = Array(additional)
+              .fill(null)
+              .map((_, i) => {
+                // 중앙 미드필더 위치에 추가
+                return {
+                  pos: "MF",
+                  x: 50 + (i % 2 === 0 ? -15 : 15) * Math.floor((i + 1) / 2),
+                  y: 50,
+                };
+              });
+            teamTemplate = [...template, ...additionalPositions];
+          } else {
+            // 초과하는 선수는 제거
+            teamTemplate = template.slice(0, playersPerTeam);
+          }
+        }
+      }
+
+      // 포메이션 템플릿에 맞게 배치
+      const teamPlayers = teamTemplate.map((t, index) => {
         return {
           name: teamNames[index] || `선수 ${index + 1}`,
           position: t.pos,
-          x: t.x, // 원래 포메이션 좌표 사용
+          x: t.x,
           y: t.y,
         };
       });

@@ -984,7 +984,14 @@ const SquadBuilder: React.FC = () => {
           }}
         >
           {/* 필드 영역 */}
-          <div style={{ width: "100%", margin: "0 auto", maxWidth: "100%" }}>
+          <div
+            style={{
+              width: "100%",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
             <Field
               ref={fieldRef}
               players={mainPlayers}
