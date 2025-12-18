@@ -161,12 +161,21 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
     const hasMultipleTeams = teamEntries.length > 1;
     const showCarousel = hasMultipleTeams; // 모바일/데스크톱 모두 캐러셀 표시
 
+    // currentTeamIndex가 범위를 벗어나지 않도록 조정
+    useEffect(() => {
+      if (teamEntries.length > 0 && currentTeamIndex >= teamEntries.length) {
+        setCurrentTeamIndex(0);
+      }
+    }, [teamEntries.length, currentTeamIndex]);
+
     // 현재 표시할 선수들
     const currentPlayers = useMemo(() => {
       if (showCarousel && teamEntries.length > 0) {
-        return teamEntries[currentTeamIndex]?.[1] || [];
+        const validIndex = Math.min(currentTeamIndex, teamEntries.length - 1);
+        const teamPlayers = teamEntries[validIndex]?.[1] || [];
+        return teamPlayers.length > 0 ? teamPlayers : players; // 팀 선수가 없으면 모든 선수 표시
       }
-      return players; // 데스크톱이거나 팀이 1개 이하일 때는 모든 선수 표시
+      return players; // 팀이 1개 이하일 때는 모든 선수 표시
     }, [showCarousel, teamEntries, currentTeamIndex, players]);
 
     // 스와이프/드래그 처리
