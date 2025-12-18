@@ -225,6 +225,16 @@ const SquadBuilder: React.FC = () => {
     });
   }, [players, formation]);
 
+  // 게임 타입 변경 실행
+  const proceedGameTypeChange = useCallback((newGameType: GameType): void => {
+    setGameType(newGameType);
+    setPlayers([]);
+    setCurrentSquadId(null);
+    loadedSquadRef.current = null;
+    hasInitializedRef.current = false;
+    setFormation(newGameType === "football" ? "4-3-3" : "5인 1-2-1");
+  }, []);
+
   // 게임 타입 변경 핸들러
   const handleGameTypeChange = useCallback(
     (newGameType: GameType): void => {
@@ -241,16 +251,6 @@ const SquadBuilder: React.FC = () => {
     },
     [gameType, players, hasChanges, proceedGameTypeChange]
   );
-
-  // 게임 타입 변경 실행
-  const proceedGameTypeChange = useCallback((newGameType: GameType): void => {
-    setGameType(newGameType);
-    setPlayers([]);
-    setCurrentSquadId(null);
-    loadedSquadRef.current = null;
-    hasInitializedRef.current = false;
-    setFormation(newGameType === "football" ? "4-3-3" : "5인 1-2-1");
-  }, []);
 
   // 현재 스쿼드 저장 후 게임 타입 변경
   const handleSaveAndChangeGameType = useCallback(async (): Promise<void> => {
