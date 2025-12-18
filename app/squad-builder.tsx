@@ -1001,7 +1001,7 @@ const SquadBuilder: React.FC = () => {
 
           {/* 선수 목록 - 모바일에서는 필드 아래, 데스크톱에서는 옆 */}
           <div
-            className="md:max-w-[300px]"
+            className="md:max-w-[400px]"
             style={{
               width: "100%",
             }}

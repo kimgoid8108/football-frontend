@@ -267,40 +267,40 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
       <div className="relative">
         {/* 팀 네비게이션 (여러 팀이 있을 때 표시) */}
         {showCarousel && (
-          <div className="flex items-center justify-between mb-3 px-2">
+          <div className="flex items-center justify-center gap-2 mb-3 px-2 max-w-[300px] mx-auto">
             <button
               onClick={() =>
                 setCurrentTeamIndex(
                   (prev) => (prev - 1 + teamEntries.length) % teamEntries.length
                 )
               }
-              className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition"
+              className="p-1.5 bg-gray-700 hover:bg-gray-600 rounded text-white transition flex-shrink-0"
             >
-              <ChevronLeft size={20} />
+              <ChevronLeft size={18} />
             </button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-1 justify-center">
               {teamEntries.map(([teamName], index) => (
                 <button
                   key={teamName}
                   onClick={() => setCurrentTeamIndex(index)}
-                  className={`h-2 rounded-full transition ${
+                  className={`h-1.5 rounded-full transition flex-shrink-0 ${
                     index === currentTeamIndex
-                      ? "bg-purple-500 w-6"
-                      : "bg-gray-600 w-2"
+                      ? "bg-purple-500 w-5"
+                      : "bg-gray-600 w-1.5"
                   }`}
                 />
               ))}
             </div>
-            <div className="text-white text-sm font-medium min-w-[60px] text-center">
+            <div className="text-white text-xs font-medium min-w-[50px] text-center flex-shrink-0">
               {teamEntries[currentTeamIndex]?.[0] || ""}
             </div>
             <button
               onClick={() =>
                 setCurrentTeamIndex((prev) => (prev + 1) % teamEntries.length)
               }
-              className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition"
+              className="p-1.5 bg-gray-700 hover:bg-gray-600 rounded text-white transition flex-shrink-0"
             >
-              <ChevronRight size={20} />
+              <ChevronRight size={18} />
             </button>
           </div>
         )}
