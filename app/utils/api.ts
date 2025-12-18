@@ -9,6 +9,45 @@ const API_BASE_URL =
 
 console.log("API URL:", API_BASE_URL);
 
+// 서버 연결 상태 확인
+export async function checkServerHealth(): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5초 타임아웃
+
+    // 실제 API 엔드포인트에 요청을 보내서 서버가 응답하는지 확인
+    // 에러 응답(401, 400 등)도 서버가 살아있다는 의미이므로 true 반환
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: "healthcheck@test.com",
+        password: "healthcheck",
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    // 응답이 있으면 서버가 살아있음 (상태 코드는 중요하지 않음)
+    // 400, 401 등의 에러도 서버가 응답했다는 의미
+    return true;
+  } catch (error: any) {
+    console.log("서버 연결 확인 실패:", error);
+    if (error.name === "AbortError") {
+      return false; // 타임아웃
+    }
+    // TypeError는 보통 네트워크 오류 (서버가 다운되었거나 연결 불가)
+    if (error instanceof TypeError) {
+      return false;
+    }
+    // 기타 오류도 서버 연결 실패로 간주
+    return false;
+  }
+}
+
 // 인증 관련 인터페이스
 export interface AuthResponse {
   accessToken: string;
