@@ -107,11 +107,22 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
     const currentTeamIndex =
       externalTeamIndex !== undefined ? externalTeamIndex : internalTeamIndex;
 
-    const setCurrentTeamIndex = (index: number) => {
+    const setCurrentTeamIndex = (
+      indexOrUpdater: number | ((prev: number) => number)
+    ) => {
       if (onTeamIndexChange) {
-        onTeamIndexChange(index);
+        if (typeof indexOrUpdater === "function") {
+          const newIndex = indexOrUpdater(currentTeamIndex);
+          onTeamIndexChange(newIndex);
+        } else {
+          onTeamIndexChange(indexOrUpdater);
+        }
       } else {
-        setInternalTeamIndex(index);
+        if (typeof indexOrUpdater === "function") {
+          setInternalTeamIndex(indexOrUpdater);
+        } else {
+          setInternalTeamIndex(indexOrUpdater);
+        }
       }
     };
     const carouselRef = useRef<HTMLDivElement>(null);
