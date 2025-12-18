@@ -1,5 +1,12 @@
-import React from "react";
-import { ChevronDown, ChevronUp, ArrowUp, ArrowDown } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  ChevronDown,
+  ChevronUp,
+  ArrowUp,
+  ArrowDown,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import {
   Player,
   GroupedPlayers,
@@ -38,6 +45,22 @@ const PlayerList: React.FC<PlayerListProps> = ({
   const benchPlayers = players.filter((p) => p.isBench);
   const isBenchCollapsed = collapsedSections["BENCH"];
 
+  // 모바일 감지
+  const [isMobile, setIsMobile] = useState(false);
+  const [currentTeamIndex, setCurrentTeamIndex] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef<number>(0);
+  const touchEndX = useRef<number>(0);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   // 팀별로 그룹화 (teamName이 있는 경우)
   const playersByTeam = React.useMemo(() => {
     const teams: { [teamName: string]: Player[] } = {};
@@ -58,6 +81,119 @@ const PlayerList: React.FC<PlayerListProps> = ({
   }, [mainPlayers]);
 
   const hasTeams = Object.keys(playersByTeam.teams).length > 0;
+  const teamEntries = Object.entries(playersByTeam.teams);
+
+  // 스와이프 처리
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const distance = touchStartX.current - touchEndX.current;
+    const minSwipeDistance = 50;
+
+    if (
+      distance > minSwipeDistance &&
+      currentTeamIndex < teamEntries.length - 1
+    ) {
+      // 왼쪽으로 스와이프 (다음 팀)
+      setCurrentTeamIndex((prev) => prev + 1);
+    } else if (distance < -minSwipeDistance && currentTeamIndex > 0) {
+      // 오른쪽으로 스와이프 (이전 팀)
+      setCurrentTeamIndex((prev) => prev - 1);
+    }
+    touchStartX.current = 0;
+    touchEndX.current = 0;
+  };
+
+  // 팀 렌더링 함수
+  const renderTeam = (
+    teamName: string,
+    teamPlayers: Player[],
+    index: number
+  ) => {
+    const teamGrouped = teamPlayers.reduce((acc, player) => {
+      const category =
+        Object.keys(POSITION_CATEGORIES).find((cat) =>
+          POSITION_CATEGORIES[cat].positions.includes(player.position)
+        ) || "FW";
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(player);
+      return acc;
+    }, {} as GroupedPlayers);
+
+    const isTeamCollapsed = collapsedSections[`TEAM_${teamName}`];
+
+    return (
+      <div
+        key={teamName}
+        className="bg-gray-800 rounded-lg overflow-hidden border-2 border-purple-600 flex-shrink-0 w-full"
+      >
+        <button
+          onClick={() => onToggleSection(`TEAM_${teamName}`)}
+          className="w-full px-4 py-3 flex items-center justify-between bg-purple-700 hover:bg-purple-600 transition"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-white font-bold">🏆 {teamName}</span>
+            <span className="bg-purple-500 text-white text-xs px-2 py-1 rounded-full">
+              {teamPlayers.length}명
+            </span>
+          </div>
+          {isTeamCollapsed ? (
+            <ChevronDown size={20} className="text-white" />
+          ) : (
+            <ChevronUp size={20} className="text-white" />
+          )}
+        </button>
+
+        {!isTeamCollapsed && (
+          <div className="p-2 space-y-2 max-h-[400px] overflow-y-auto">
+            {Object.keys(POSITION_CATEGORIES).map((category) => {
+              const categoryPlayers = teamGrouped[category];
+              if (!categoryPlayers || categoryPlayers.length === 0) return null;
+
+              return (
+                <div
+                  key={category}
+                  className="bg-gray-700 rounded p-2 space-y-1"
+                >
+                  <div className="text-gray-300 text-xs font-medium mb-1">
+                    {POSITION_CATEGORIES[category].name}
+                  </div>
+                  {categoryPlayers.map((player) => (
+                    <PlayerCard
+                      key={player.id}
+                      player={player}
+                      onNameChange={onNameChange}
+                      onPositionChange={onPositionChange}
+                      onDelete={onDelete}
+                      gameType={gameType}
+                      extraAction={
+                        onToggleBench && (
+                          <button
+                            onClick={() => onToggleBench(player.id)}
+                            className="p-1.5 bg-orange-600 hover:bg-orange-500 rounded text-white transition"
+                            title="후보로 이동"
+                          >
+                            <ArrowDown size={14} />
+                          </button>
+                        )
+                      }
+                    />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-3">
@@ -68,90 +204,76 @@ const PlayerList: React.FC<PlayerListProps> = ({
         {/* 팀별로 표시 (팀이 있는 경우) */}
         {hasTeams ? (
           <>
-            {Object.entries(playersByTeam.teams).map(
-              ([teamName, teamPlayers]) => {
-                const teamGrouped = teamPlayers.reduce((acc, player) => {
-                  const category =
-                    Object.keys(POSITION_CATEGORIES).find((cat) =>
-                      POSITION_CATEGORIES[cat].positions.includes(
-                        player.position
+            {isMobile && teamEntries.length > 1 ? (
+              /* 모바일: 캐러셀 형태 */
+              <div className="relative">
+                <div
+                  ref={carouselRef}
+                  className="flex overflow-hidden"
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  style={{
+                    transform: `translateX(-${currentTeamIndex * 100}%)`,
+                    transition: "transform 0.3s ease-in-out",
+                  }}
+                >
+                  {teamEntries.map(([teamName, teamPlayers], index) => (
+                    <div key={teamName} className="w-full flex-shrink-0">
+                      {renderTeam(teamName, teamPlayers, index)}
+                    </div>
+                  ))}
+                </div>
+
+                {/* 네비게이션 버튼 */}
+                <div className="flex items-center justify-between mt-3 px-2">
+                  <button
+                    onClick={() =>
+                      setCurrentTeamIndex((prev) =>
+                        prev > 0 ? prev - 1 : prev
                       )
-                    ) || "FW";
-                  if (!acc[category]) acc[category] = [];
-                  acc[category].push(player);
-                  return acc;
-                }, {} as GroupedPlayers);
-
-                const isTeamCollapsed = collapsedSections[`TEAM_${teamName}`];
-
-                return (
-                  <div
-                    key={teamName}
-                    className="bg-gray-800 rounded-lg overflow-hidden border-2 border-purple-600"
+                    }
+                    disabled={currentTeamIndex === 0}
+                    className="p-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded text-white transition"
                   >
-                    <button
-                      onClick={() => onToggleSection(`TEAM_${teamName}`)}
-                      className="w-full px-4 py-3 flex items-center justify-between bg-purple-700 hover:bg-purple-600 transition"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-white font-bold">
-                          🏆 {teamName}
-                        </span>
-                        <span className="bg-purple-500 text-white text-xs px-2 py-1 rounded-full">
-                          {teamPlayers.length}명
-                        </span>
-                      </div>
-                      {isTeamCollapsed ? (
-                        <ChevronDown size={20} className="text-white" />
-                      ) : (
-                        <ChevronUp size={20} className="text-white" />
-                      )}
-                    </button>
-
-                    {!isTeamCollapsed && (
-                      <div className="p-2 space-y-2">
-                        {Object.keys(POSITION_CATEGORIES).map((category) => {
-                          const categoryPlayers = teamGrouped[category];
-                          if (!categoryPlayers || categoryPlayers.length === 0)
-                            return null;
-
-                          return (
-                            <div
-                              key={category}
-                              className="bg-gray-700 rounded p-2 space-y-1"
-                            >
-                              <div className="text-gray-300 text-xs font-medium mb-1">
-                                {POSITION_CATEGORIES[category].name}
-                              </div>
-                              {categoryPlayers.map((player) => (
-                                <PlayerCard
-                                  key={player.id}
-                                  player={player}
-                                  onNameChange={onNameChange}
-                                  onPositionChange={onPositionChange}
-                                  onDelete={onDelete}
-                                  gameType={gameType}
-                                  extraAction={
-                                    onToggleBench && (
-                                      <button
-                                        onClick={() => onToggleBench(player.id)}
-                                        className="p-1.5 bg-orange-600 hover:bg-orange-500 rounded text-white transition"
-                                        title="후보로 이동"
-                                      >
-                                        <ArrowDown size={14} />
-                                      </button>
-                                    )
-                                  }
-                                />
-                              ))}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                    <ChevronLeft size={20} />
+                  </button>
+                  <div className="flex items-center gap-2">
+                    {teamEntries.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentTeamIndex(index)}
+                        className={`w-2 h-2 rounded-full transition ${
+                          index === currentTeamIndex
+                            ? "bg-purple-500 w-6"
+                            : "bg-gray-600"
+                        }`}
+                      />
+                    ))}
                   </div>
-                );
-              }
+                  <span className="text-white text-sm font-medium">
+                    {currentTeamIndex + 1} / {teamEntries.length}
+                  </span>
+                  <button
+                    onClick={() =>
+                      setCurrentTeamIndex((prev) =>
+                        prev < teamEntries.length - 1 ? prev + 1 : prev
+                      )
+                    }
+                    disabled={currentTeamIndex === teamEntries.length - 1}
+                    className="p-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded text-white transition"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* 데스크톱 또는 팀이 1개: 기존 방식 */
+              <>
+                {teamEntries.map(([teamName, teamPlayers], index) =>
+                  renderTeam(teamName, teamPlayers, index)
+                )}
+              </>
             )}
 
             {/* 팀이 없는 선수들 */}
