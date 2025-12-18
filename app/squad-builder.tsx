@@ -299,22 +299,41 @@ const SquadBuilder: React.FC = () => {
         gameType,
       };
 
+      let savedSquad: SquadData;
       if (isGuestMode) {
-        saveLocalSquad(squadData);
+        savedSquad = saveLocalSquad(squadData);
         showSuccess("스쿼드가 저장되었습니다!");
       } else {
-        await createSquad(squadData);
+        savedSquad = await createSquad(squadData);
         showSuccess("스쿼드가 저장되었습니다!");
       }
 
+      // 저장한 스쿼드 ID 저장 (게임 타입 변경 후에도 유지)
+      const savedSquadId = savedSquad.id;
+
+      // 게임 타입 변경 실행
       proceedGameTypeChange(pendingGameType);
+
+      // 게임 타입 변경 후 저장한 스쿼드 ID 유지 (저장한 스쿼드가 계속 표시되도록)
+      if (savedSquadId) {
+        setCurrentSquadId(savedSquadId);
+      }
+
       setShowSaveConfirm(false);
       setPendingGameType(null);
     } catch (error) {
       console.error("스쿼드 저장 에러:", error);
       showError("스쿼드 저장에 실패했습니다.");
     }
-  }, [pendingGameType, players, formation, gameType, showSuccess, showError]);
+  }, [
+    pendingGameType,
+    players,
+    formation,
+    gameType,
+    showSuccess,
+    showError,
+    proceedGameTypeChange,
+  ]);
 
   // 저장하지 않고 게임 타입 변경
   const handleSkipSaveAndChangeGameType = useCallback((): void => {
