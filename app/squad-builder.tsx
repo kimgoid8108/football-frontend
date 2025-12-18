@@ -808,7 +808,7 @@ const SquadBuilder: React.FC = () => {
 
       {/* 성공 메시지 토스트 */}
       {successMessage && (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse">
+        <div className="fixed top-0 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-b-lg shadow-lg z-50 animate-slide-down-up">
           ✅ {successMessage}
         </div>
       )}
