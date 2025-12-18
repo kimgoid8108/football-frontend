@@ -27,7 +27,14 @@ import {
   PlayerList,
   SaveLoadPanel,
 } from "./components/squad-builder";
-import { SquadData, getToken, createSquad, saveLocalSquad } from "./utils/api";
+import {
+  SquadData,
+  getToken,
+  createSquad,
+  updateSquad,
+  saveLocalSquad,
+  updateLocalSquad,
+} from "./utils/api";
 import { useAuth } from "./contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
@@ -300,12 +307,25 @@ const SquadBuilder: React.FC = () => {
       };
 
       let savedSquad: SquadData;
-      if (isGuestMode) {
-        savedSquad = saveLocalSquad(squadData);
-        showSuccess("스쿼드가 저장되었습니다!");
+
+      // 현재 로드된 스쿼드가 있으면 업데이트, 없으면 새로 생성
+      if (currentSquadId) {
+        if (isGuestMode) {
+          updateLocalSquad(currentSquadId, squadData);
+          savedSquad = { ...squadData, id: currentSquadId };
+          showSuccess("스쿼드가 업데이트되었습니다!");
+        } else {
+          savedSquad = await updateSquad(currentSquadId, squadData);
+          showSuccess("스쿼드가 업데이트되었습니다!");
+        }
       } else {
-        savedSquad = await createSquad(squadData);
-        showSuccess("스쿼드가 저장되었습니다!");
+        if (isGuestMode) {
+          savedSquad = saveLocalSquad(squadData);
+          showSuccess("스쿼드가 저장되었습니다!");
+        } else {
+          savedSquad = await createSquad(squadData);
+          showSuccess("스쿼드가 저장되었습니다!");
+        }
       }
 
       // 저장한 스쿼드 ID 저장 (게임 타입 변경 후에도 유지)
@@ -330,6 +350,7 @@ const SquadBuilder: React.FC = () => {
     players,
     formation,
     gameType,
+    currentSquadId,
     showSuccess,
     showError,
     proceedGameTypeChange,
@@ -787,7 +808,7 @@ const SquadBuilder: React.FC = () => {
 
       {/* 성공 메시지 토스트 */}
       {successMessage && (
-        <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse">
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse">
           ✅ {successMessage}
         </div>
       )}
