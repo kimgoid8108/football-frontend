@@ -806,9 +806,17 @@ const SquadBuilder: React.FC = () => {
     >
       <ErrorToast message={errorMessage} />
 
-      {/* 성공 메시지 토스트 */}
+      {/* 성공 메시지 토스트 - 상단에서 슬라이드 다운/업 */}
       {successMessage && (
-        <div className="fixed top-0 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-b-lg shadow-lg z-50 animate-slide-down-up">
+        <div
+          className="fixed left-1/2 bg-green-600 text-white px-6 py-4 rounded-b-lg shadow-2xl z-[9999] animate-slide-down-up font-medium"
+          style={{
+            top: 0,
+            transform: "translateX(-50%)",
+            minWidth: "200px",
+            textAlign: "center",
+          }}
+        >
           ✅ {successMessage}
         </div>
       )}
