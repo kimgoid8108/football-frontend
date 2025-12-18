@@ -237,99 +237,100 @@ const Field = forwardRef<HTMLDivElement, FieldProps>(
             className="absolute inset-0"
             style={{ padding: "clamp(8px, 3%, 12px)" }}
           >
-          {/* 포지션 영역 오버레이 (드래그 중일 때만 표시) */}
-          {isDragging && (
-            <div
-              className="absolute inset-0 pointer-events-none z-10"
-              style={{ willChange: "opacity" }}
-            >
-              {positionZones.map((zone, index) => (
-                <div
-                  key={index}
-                  className="absolute flex items-center justify-center"
-                  style={{
-                    left: `${zone.x}%`,
-                    top: `${zone.y}%`,
-                    width: `${zone.width}%`,
-                    height: `${zone.height}%`,
-                    backgroundColor: `${zone.color}20`,
-                    border: `1px dashed ${zone.color}80`,
-                    borderRadius: "4px",
-                  }}
-                >
-                  <span
-                    className="text-xs font-bold px-1 py-0.5 rounded"
+            {/* 포지션 영역 오버레이 (드래그 중일 때만 표시) */}
+            {isDragging && (
+              <div
+                className="absolute inset-0 pointer-events-none z-10"
+                style={{ willChange: "opacity" }}
+              >
+                {positionZones.map((zone, index) => (
+                  <div
+                    key={index}
+                    className="absolute flex items-center justify-center"
                     style={{
-                      backgroundColor: `${zone.color}CC`,
-                      color: zone.color === "#FFD700" ? "#000" : "#fff",
-                      textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+                      left: `${zone.x}%`,
+                      top: `${zone.y}%`,
+                      width: `${zone.width}%`,
+                      height: `${zone.height}%`,
+                      backgroundColor: `${zone.color}20`,
+                      border: `1px dashed ${zone.color}80`,
+                      borderRadius: "4px",
                     }}
                   >
-                    {zone.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+                    <span
+                      className="text-xs font-bold px-1 py-0.5 rounded"
+                      style={{
+                        backgroundColor: `${zone.color}CC`,
+                        color: zone.color === "#FFD700" ? "#000" : "#fff",
+                        textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+                      }}
+                    >
+                      {zone.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
 
-          {/* 필드 라인 */}
-          <svg
-            className="absolute inset-0 w-full h-full pointer-events-none"
-            style={{ opacity: 0.8 }}
-          >
-            {/* 골대 (상단) */}
-            <rect
-              x="5%"
-              y="2%"
-              width="90%"
-              height="18%"
-              fill="none"
-              stroke="white"
-              strokeWidth="3"
-            />
-            {/* 골대 (하단) */}
-            <rect
-              x="5%"
-              y="80%"
-              width="90%"
-              height="18%"
-              fill="none"
-              stroke="white"
-              strokeWidth="3"
-            />
-            {/* 중앙 라인 */}
-            <line
-              x1="5%"
-              y1="50%"
-              x2="95%"
-              y2="50%"
-              stroke="white"
-              strokeWidth="3.5"
-            />
-            {/* 중앙 서클 */}
-            <circle
-              cx="50%"
-              cy="50%"
-              r="15%"
-              fill="none"
-              stroke="white"
-              strokeWidth="3"
-            />
-            {/* 중앙 점 */}
-            <circle cx="50%" cy="50%" r="2%" fill="white" />
-          </svg>
+            {/* 필드 라인 */}
+            <svg
+              className="absolute inset-0 w-full h-full pointer-events-none"
+              style={{ opacity: 0.8 }}
+            >
+              {/* 골대 (상단) */}
+              <rect
+                x="5%"
+                y="2%"
+                width="90%"
+                height="18%"
+                fill="none"
+                stroke="white"
+                strokeWidth="3"
+              />
+              {/* 골대 (하단) */}
+              <rect
+                x="5%"
+                y="80%"
+                width="90%"
+                height="18%"
+                fill="none"
+                stroke="white"
+                strokeWidth="3"
+              />
+              {/* 중앙 라인 */}
+              <line
+                x1="5%"
+                y1="50%"
+                x2="95%"
+                y2="50%"
+                stroke="white"
+                strokeWidth="3.5"
+              />
+              {/* 중앙 서클 */}
+              <circle
+                cx="50%"
+                cy="50%"
+                r="15%"
+                fill="none"
+                stroke="white"
+                strokeWidth="3"
+              />
+              {/* 중앙 점 */}
+              <circle cx="50%" cy="50%" r="2%" fill="white" />
+            </svg>
 
-          {/* 선수 마커 */}
-          {currentPlayers.map((player) => (
-            <PlayerMarker
-              key={player.id}
-              player={player}
-              isDragging={draggedPlayerId === player.id}
-              onMouseDown={onPlayerMouseDown}
-              onTouchStart={onPlayerTouchStart}
-              gameType={gameType}
-            />
-          ))}
+            {/* 선수 마커 */}
+            {currentPlayers.map((player) => (
+              <PlayerMarker
+                key={player.id}
+                player={player}
+                isDragging={draggedPlayerId === player.id}
+                onMouseDown={onPlayerMouseDown}
+                onTouchStart={onPlayerTouchStart}
+                gameType={gameType}
+              />
+            ))}
+          </div>
         </div>
       </div>
     );
