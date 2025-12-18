@@ -359,28 +359,31 @@ const SquadBuilder: React.FC = () => {
 
   // 랜덤 배치 확인
   const handleRandomizeConfirm = useCallback(
-    (assignments: { position: string; name: string }[]): void => {
+    (
+      teams: { name: string; position: string; x: number; y: number }[][]
+    ): void => {
       if (!formation || !FORMATIONS[formation]) return;
 
-      const template = FORMATIONS[formation];
       const benchPlayers = players.filter((p) => p.isBench);
 
-      // 새로운 선수들 생성
-      const newPlayers: Player[] = template.map((t, index) => {
-        const assignment = assignments[index];
-        const coords = getDefaultPositionCoordinates(assignment.position);
+      // 모든 팀의 선수들을 하나의 배열로 합치기
+      let playerIdCounter = Date.now();
+      const allPlayers: Player[] = [];
 
-        return {
-          id: Date.now() + index,
-          name: assignment.name,
-          position: assignment.position,
-          x: t.x,
-          y: t.y,
-        };
+      teams.forEach((team) => {
+        team.forEach((p) => {
+          allPlayers.push({
+            id: playerIdCounter++,
+            name: p.name,
+            position: p.position,
+            x: p.x,
+            y: p.y,
+          });
+        });
       });
 
-      setPlayers([...newPlayers, ...benchPlayers]);
-      showSuccess("선수들이 배치되었습니다!");
+      setPlayers([...allPlayers, ...benchPlayers]);
+      showSuccess(`${teams.length}개 팀이 배치되었습니다!`);
     },
     [formation, players, showSuccess]
   );
@@ -911,6 +914,7 @@ const SquadBuilder: React.FC = () => {
             formations={availableFormations}
             onFormationChange={loadFormation}
             onRandomize={handleRandomize}
+            gameType={gameType}
           />
           <SaveLoadPanel
             currentFormation={formation}
